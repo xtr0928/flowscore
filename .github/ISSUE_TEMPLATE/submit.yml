@@ -1,0 +1,57 @@
+name: ✍ 投稿工作流
+description: 推荐一个开箱即用的开源 AI 工作流（管线），我们会用本地模型判定后收录到流谱卡片站。
+title: "[投稿] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢投稿！只需填写仓库链接。我们会用服务器本地的 Qwen3.8-27B 读取该仓库的 README 做判定：
+        **① 是否真「开箱即用」 ② 是否与 AI 工作流相关** —— 通过后就会出现在 [流谱](https://pipeline.zufe.com.cn/) 的卡片列表里。
+
+  - type: input
+    id: repo
+    attributes:
+      label: GitHub 仓库链接
+      description: 请填完整链接
+      placeholder: https://github.com/owner/repo
+    validations:
+      required: true
+
+  - type: input
+    id: oneline
+    attributes:
+      label: 一句话介绍
+      description: 它是做什么的？（可选）
+      placeholder: 例如：把会议录音一键转成结构化纪要
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: 它最像哪一类？
+      options:
+        - 文档处理
+        - 视频生成
+        - 图像处理
+        - 音频语音
+        - 数据采集
+        - 流程自动化
+        - 科研学术
+        - 内容创作
+        - 编程开发
+        - 其他 / 不确定
+    validations:
+      required: true
+
+  - type: textarea
+    id: reason
+    attributes:
+      label: 为什么推荐它？（可选）
+      description: 使用体验、亮点、注意事项……
+
+  - type: checkboxes
+    id: ack
+    attributes:
+      label: 确认
+      options:
+        - label: 这是一个开源项目，且我不是在发广告 :)
+          required: true
