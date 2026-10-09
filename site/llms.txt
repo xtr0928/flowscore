@@ -1,0 +1,18 @@
+# 流谱 · FlowScore —— 开箱即用 AI 工作流精选
+站点: https://pipeline.zufe.com.cn/
+面向 Agent 的只读接口（无需鉴权，限速 90 次/分/IP，只读不写）:
+1) GET /api/stats -> 站点统计（总数 / 高置信 / 10k+ / 分类计数）
+2) GET /api/facets?q=&conf=&use=&cat=&form=&dpl=&model=&ui=
+   -> 分面计数（同一维度多选=或，跨维度=与；计数为"留一法"：即假设选中该面值时其余条件不变的可选数量）
+   维度取值:
+     use=用途分类（文档处理/视频生成/图像处理/音频语音/数据采集/流程自动化/科研学术/内容创作/编程开发/其他）
+     cat=A/B/C/D 交付类别 | form=形态 | dpl=部署方式 | model=模型运行 | ui=使用方式（均为关键词粗分标签）
+3) GET /api/items?offset=0&limit=36&sort=stars&q=<关键词>&conf=<high|medium>&use=&cat=&form=&dpl=&model=&ui=
+   - sort: stars | stars-a | push | name
+   - 返回 {total, offset, limit, items:[{full_name,url,stars,lang,summary,desc_en,category,confidence,pushed_at,license,deploy,tech,topics[],f_use,f_form,f_deploy,f_model,f_ui,hits}]}
+4) GET /api/search?q=<自然语言需求>&n=10 -> 本地 Qwen 语义挑选（engine 字段标注 qwen|lexical，失败自动回退关键词）
+数据口径: GitHub 公开仓库扫描 + 部署实证核查（根目录实测 docker/compose/package.json 等入口）；
+confidence 为站点内部标注，仅供参考；"有部署实证"仅表示存在部署入口，不保证运行时无坑；
+分面（f_use 用途 / f_form 形态 / f_deploy 部署方式 / f_model 模型运行 / f_ui 使用方式）为离线关键词规则
+粗分（打标函数见 ingest_flowscore_v2.py），适合筛选导航，不保证 100% 准确。
+示例: curl "https://pipeline.zufe.com.cn/api/search?q=把会议录音变成纪要"

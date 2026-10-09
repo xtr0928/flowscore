@@ -1,0 +1,10 @@
+{
+  "id": "mathmodel-pipeline-v61",
+  "category": "科研与数据分析",
+  "tags": ["数学建模", "逐问推进", "反投毒", "摄入门禁", "多智能体", "MCM", "V6.1"],
+  "status": "published",
+  "featured": true,
+  "order": 15,
+  "cover": null,
+  "notes": "V6.1 当前版本（2026-09-25）。在 V5.2 基础上：① 改为逐问循环 P1-P9 ② 九角色分离 ③ 新增 S-1 反投毒摄入安检 ④ 铁律扩到 R1-R8。本条目取代 mathmodel-pipeline（V5.2），后者保留作历史版本。"
+}

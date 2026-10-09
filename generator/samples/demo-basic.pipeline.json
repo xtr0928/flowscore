@@ -1,0 +1,101 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "pipeline",
+  "meta": {
+    "name": "文章摘要管线",
+    "pipeline_id": "demo-basic",
+    "description": "基础三节点示例：输入文章文本，调用 DeepSeek 模型生成 Markdown 摘要并输出。",
+    "version": "1.0.0",
+    "author": "pipeline-editor"
+  },
+  "runtime": {
+    "mode": "config_only",
+    "output_dir": "output",
+    "concurrency": 2,
+    "continue_on_error": false
+  },
+  "nodes": [
+    {
+      "id": "n_1",
+      "type": "input",
+      "label": "文章输入",
+      "config": {
+        "content": "在此粘贴需要摘要的文章全文。",
+        "outputs": [
+          {
+            "id": "text",
+            "type": "text",
+            "label": "文章文本"
+          }
+        ]
+      }
+    },
+    {
+      "id": "n_2",
+      "type": "model_call",
+      "label": "生成摘要",
+      "config": {
+        "provider": {
+          "id": "deepseek",
+          "label": "DeepSeek",
+          "channel": "builtin"
+        },
+        "model": "deepseek-flash",
+        "prompt": {
+          "template": "请阅读以下文章，并生成一份结构清晰的 Markdown 摘要：\n{{input.text}}",
+          "variables": [
+            "input.text"
+          ]
+        },
+        "output": {
+          "format": "md",
+          "filename_template": "summary.md"
+        },
+        "inputs": [
+          {
+            "id": "text",
+            "type": "text",
+            "label": "文章文本"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "result",
+            "type": "text",
+            "label": "摘要结果"
+          }
+        ]
+      }
+    },
+    {
+      "id": "n_3",
+      "type": "output",
+      "label": "输出结果",
+      "config": {
+        "format": "md",
+        "filename_template": "article-summary.md",
+        "inputs": [
+          {
+            "id": "content",
+            "type": "any",
+            "label": "内容"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "n_1",
+      "from_port": "text",
+      "to": "n_2",
+      "to_port": "text"
+    },
+    {
+      "from": "n_2",
+      "from_port": "result",
+      "to": "n_3",
+      "to_port": "content"
+    }
+  ]
+}

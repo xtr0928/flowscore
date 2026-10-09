@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "layout",
+  "meta": {
+    "pipeline_id": "demo-basic",
+    "name": "基础示例布局",
+    "description": "与 demo-basic.pipeline.json 配套的布局示例，三节点按列排布。"
+  },
+  "viewport": {
+    "x": 0,
+    "y": 0,
+    "zoom": 1
+  },
+  "canvas": {
+    "grid": {
+      "size": 20,
+      "visible": true
+    },
+    "background": "#ffffff"
+  },
+  "nodes": {
+    "n_1": {
+      "x": 80,
+      "y": 200,
+      "w": 240,
+      "h": 120,
+      "collapsed": false,
+      "color": null,
+      "z": 1
+    },
+    "n_2": {
+      "x": 400,
+      "y": 200,
+      "w": 240,
+      "h": 120,
+      "collapsed": false,
+      "color": null,
+      "z": 2
+    },
+    "n_3": {
+      "x": 760,
+      "y": 200,
+      "w": 240,
+      "h": 120,
+      "collapsed": false,
+      "color": null,
+      "z": 3
+    }
+  }
+}

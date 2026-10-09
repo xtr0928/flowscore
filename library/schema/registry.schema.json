@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://flowscore.zufe.com.cn/schema/registry.schema.json",
+  "title": "管线库索引 registry.json",
+  "description": "由 tools/build_registry.py 扫描 pipelines/ 生成，绝不手写。站点首页的数据源。",
+  "type": "object",
+  "required": ["registry_version", "generated", "count", "pipelines"],
+  "additionalProperties": false,
+  "properties": {
+    "registry_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "generated": { "type": "string", "description": "生成时间（ISO 8601 带时区）。" },
+    "count": { "type": "integer", "minimum": 0 },
+    "pipelines": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/entry" }
+    },
+    "categories": {
+      "type": "array",
+      "description": "分类聚合（站点筛选栏用）。",
+      "items": {
+        "type": "object",
+        "required": ["name", "count"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "count": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "skipped": {
+      "type": "array",
+      "description": "校验未通过、被拒绝收录的目录（附原因，便于修）。",
+      "items": {
+        "type": "object",
+        "required": ["dir", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "dir": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    }
+  },
+
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "description": "一条管线的目录条目。字段来自 pipeline.flow.json（identity/about/nodes）与 meta.json 的合并。",
+      "required": ["id", "name", "summary", "version", "category", "path", "flow", "readme"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "description": "来自 flow.identity.name" },
+        "summary": { "type": "string", "description": "来自 flow.about.summary（单一来源）" },
+        "version": { "type": "string", "description": "来自 flow.identity.version" },
+        "author": { "type": ["string", "null"], "description": "来自 flow.identity.author" },
+        "license": { "type": ["string", "null"] },
+        "created": { "type": ["string", "null"] },
+        "category": { "type": "string", "description": "来自 meta.category" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "featured": { "type": "boolean" },
+        "order": { "type": "integer" },
+        "cover": { "type": ["string", "null"] },
+        "stats": {
+          "type": "object",
+          "description": "由 flow.nodes 统计得出。",
+          "required": ["nodes", "edges", "notes", "models"],
+          "additionalProperties": false,
+          "properties": {
+            "nodes": { "type": "integer", "description": "节点总数（含 note）" },
+            "edges": { "type": "integer", "description": "数据边总数（不含 attached_to）" },
+            "notes": { "type": "integer", "description": "注释节点数" },
+            "models": { "type": "integer", "description": "用到的模型端点去重数量" }
+          }
+        },
+        "requires": { "type": "array", "items": { "type": "string" }, "description": "来自 flow.about.requires" },
+        "produces": { "type": "array", "items": { "type": "string" }, "description": "来自 flow.about.produces" },
+        "path": { "type": "string", "description": "管线目录相对路径，如 pipelines/coding-pipeline/" },
+        "flow": { "type": "string", "description": "流谱格式文件相对路径（生成器用 ?open= 打开这个）。" },
+        "readme": { "type": "string", "description": "管线介绍相对路径。" },
+        "updated": { "type": ["string", "null"], "description": "最近一次 git 提交时间，或文件 mtime。" }
+      }
+    }
+  }
+}

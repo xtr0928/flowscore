@@ -1,0 +1,14 @@
+[Unit]
+Description=流谱 FlowScore 新版站点（管线库 + 生成器）:61902
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/zhenjinchao/flowscore-site
+Environment=HOME=/home/zhenjinchao
+ExecStart=/home/zhenjinchao/flarum/_dl/frankenphp run --config /home/zhenjinchao/flowscore-site/Caddyfile
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target

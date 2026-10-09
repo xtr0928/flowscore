@@ -1,0 +1,10 @@
+{
+  "id": "coding-pipeline",
+  "category": "编程开发",
+  "tags": ["多模型协同", "代码生成", "评审回路", "四模型分工"],
+  "status": "published",
+  "featured": true,
+  "order": 10,
+  "cover": null,
+  "notes": "四模型分工协同编码管线（执行段）。本体实现见 src/（planning.py 规划段 + coding_pipeline.py 执行段）。"
+}

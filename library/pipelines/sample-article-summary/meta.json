@@ -1,0 +1,13 @@
+{
+  "id": "sample-article-summary",
+  "category": "内容创作",
+  "tags": [
+    "入门示例",
+    "文本摘要"
+  ],
+  "status": "published",
+  "featured": false,
+  "order": 20,
+  "cover": null,
+  "notes": "最小可用示例：4 个节点 + 1 条挂靠注释 + 1 条全局提示词。"
+}

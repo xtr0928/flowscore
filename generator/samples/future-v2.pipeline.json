@@ -1,0 +1,94 @@
+{
+  "schema_version": "2.0.0",
+  "kind": "pipeline",
+  "future_root_field": {
+    "capability": "distributed_execution",
+    "options": {
+      "workers": 8,
+      "strategy": "round-robin"
+    }
+  },
+  "meta": {
+    "name": "future-v2-unknown-fields-sample",
+    "description": "用于触发 newer 分支的样例：根级、节点级、meta 内各含一个未知字段，验证导入时进入 _unknown 并在导出时原样回写。",
+    "version": "2.0.0",
+    "author": "pipeline-coder",
+    "future_meta_field": {
+      "release_channel": "beta",
+      "flags": [
+        "experimental-parallel",
+        "telemetry-lite"
+      ]
+    }
+  },
+  "nodes": [
+    {
+      "id": "node_input",
+      "type": "input",
+      "config": {
+        "content": "这是一份用于验证 2.0.0 未知字段保留行为的输入文本。"
+      },
+      "outputs": [
+        {
+          "id": "out_text",
+          "type": "text",
+          "label": "原始文本"
+        }
+      ]
+    },
+    {
+      "id": "node_model",
+      "type": "modelCall",
+      "future_node_field": {
+        "cache_policy": "aggressive",
+        "retry_on_stream_drop": true
+      },
+      "config": {
+        "provider": "builtin-default",
+        "model": "glm-default",
+        "prompt": "请对以下文本做摘要：{{text}}",
+        "output": "md"
+      },
+      "inputs": [
+        {
+          "id": "in_text",
+          "type": "text",
+          "label": "待摘要文本"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "out_summary",
+          "type": "text",
+          "label": "摘要结果"
+        }
+      ]
+    },
+    {
+      "id": "node_output",
+      "type": "output",
+      "config": {
+        "source": "node_model.out_summary",
+        "format": "md",
+        "filename_template": "final-summary.md"
+      },
+      "inputs": [
+        {
+          "id": "in_summary",
+          "type": "text",
+          "label": "摘要结果"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "node_input.out_text",
+      "to": "node_model.in_text"
+    },
+    {
+      "from": "node_model.out_summary",
+      "to": "node_output.in_summary"
+    }
+  ]
+}

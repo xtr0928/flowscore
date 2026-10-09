@@ -1,0 +1,14 @@
+{
+  "id": "sample-dual-source-qa",
+  "category": "数据分析",
+  "tags": [
+    "示例",
+    "事实核对",
+    "汇合语义"
+  ],
+  "status": "published",
+  "featured": false,
+  "order": 30,
+  "cover": null,
+  "notes": "演示 mode:all / required:false / 注入型注释 / 挂靠型注释 / 全局提示词。"
+}

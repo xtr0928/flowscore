@@ -1,0 +1,133 @@
+{
+  "kind": "pipeline",
+  "meta": {
+    "name": "旧版无版本号样例",
+    "description": "来自 legacy 分支的旧版管线，缺少 schema_version 字段，用于验证迁移提示与自动补全。",
+    "version": "0.9.0",
+    "author": "legacy-maintainer"
+  },
+  "runtime": {
+    "output_dir": "output/legacy",
+    "concurrency": 2,
+    "continue_on_error": false
+  },
+  "nodes": [
+    {
+      "id": "node-input",
+      "type": "input",
+      "label": "源文本输入",
+      "position": {
+        "x": 80,
+        "y": 200
+      },
+      "config": {
+        "content": "协同编码管线是一种将需求规格自动转换为可用代码的编排方式。",
+        "outputs": [
+          {
+            "id": "out",
+            "type": "text",
+            "label": "原始文本"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node-summarize",
+      "type": "model_call",
+      "label": "摘要生成",
+      "position": {
+        "x": 400,
+        "y": 200
+      },
+      "config": {
+        "provider": {
+          "id": "builtin-glm",
+          "label": "内置 GLM 通道",
+          "channel": "builtin"
+        },
+        "model": "glm-4.6",
+        "prompt": {
+          "template": "请将以下文本压缩为一句不超过 30 字的摘要：\n{{text}}",
+          "variables": [
+            "text"
+          ]
+        },
+        "output": {
+          "format": "md",
+          "filename_template": "summary.md"
+        },
+        "inputs": [
+          {
+            "id": "in",
+            "type": "text",
+            "label": "待摘要文本"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "out",
+            "type": "text",
+            "label": "摘要结果"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node-report",
+      "type": "model_call",
+      "label": "报告润色",
+      "position": {
+        "x": 720,
+        "y": 200
+      },
+      "config": {
+        "provider": {
+          "id": "builtin-glm",
+          "label": "内置 GLM 通道",
+          "channel": "builtin"
+        },
+        "model": "glm-4.6",
+        "prompt": {
+          "template": "基于以下摘要，生成一份简短的中文说明报告：\n{{summary}}",
+          "variables": [
+            "summary"
+          ]
+        },
+        "output": {
+          "format": "md",
+          "filename_template": "report.md"
+        },
+        "inputs": [
+          {
+            "id": "in",
+            "type": "text",
+            "label": "摘要输入"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "out",
+            "type": "text",
+            "label": "最终报告"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-input-to-summarize",
+      "source": "node-input",
+      "source_port": "out",
+      "target": "node-summarize",
+      "target_port": "in"
+    },
+    {
+      "id": "edge-summarize-to-report",
+      "source": "node-summarize",
+      "source_port": "out",
+      "target": "node-report",
+      "target_port": "in"
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "providers",
+  "providers": [
+    {
+      "id": "deepseek",
+      "label": "DeepSeek",
+      "base_url": "https://api.deepseek.com",
+      "models": [
+        "deepseek-chat",
+        "deepseek-reasoner"
+      ]
+    },
+    {
+      "id": "kimi",
+      "label": "Kimi (Moonshot)",
+      "base_url": "https://api.moonshot.cn/v1",
+      "models": [
+        "moonshot-v1-8k",
+        "moonshot-v1-32k",
+        "moonshot-v1-128k"
+      ]
+    },
+    {
+      "id": "glm",
+      "label": "GLM (智谱)",
+      "base_url": "https://open.bigmodel.cn/api/paas/v4",
+      "models": [
+        "glm-4-plus",
+        "glm-4-air",
+        "glm-4-flash",
+        "glm-4-long"
+      ]
+    },
+    {
+      "id": "qwen",
+      "label": "Qwen (通义千问)",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "models": [
+        "qwen-turbo",
+        "qwen-plus",
+        "qwen-max",
+        "qwen-long"
+      ]
+    },
+    {
+      "id": "token8341",
+      "label": "Token8341 (中转)",
+      "base_url": "https://api.token8341.com/v1",
+      "models": [
+        "gpt-4o",
+        "gpt-4o-mini",
+        "claude-3-5-sonnet-20241022",
+        "gemini-2.0-flash"
+      ]
+    },
+    {
+      "id": "custom",
+      "label": "自定义渠道",
+      "base_url": "",
+      "models": []
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+    auto_https off
+    admin off
+}
+
+http://:61902 {
+    root * /home/zhenjinchao/flowscore-site
+    encode zstd gzip
+
+    # 「其他工作流」页要用原来的只读 API（本地 Qwen 语义搜索等）
+    handle /api/items* {
+        header Cache-Control "no-store"
+        reverse_proxy 127.0.0.1:61587
+    }
+    handle /api/search* {
+        header Cache-Control "no-store"
+        reverse_proxy 127.0.0.1:61587
+    }
+    handle /api/stats* {
+        header Cache-Control "no-store"
+        reverse_proxy 127.0.0.1:61587
+    }
+    handle /api/facets* {
+        header Cache-Control "no-store"
+        reverse_proxy 127.0.0.1:61587
+    }
+    handle /api/community* {
+        header Cache-Control "no-store"
+        reverse_proxy 127.0.0.1:61587
+    }
+    handle {
+        header Cache-Control "no-cache"
+        file_server
+    }
+}

@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "pipeline",
+  "meta": {
+    "description": "故意缺失 meta.name 字段，用于触发校验错误（错误①：根级缺少必填字段 meta.name）",
+    "version": "1.0.0",
+    "author": "qa-sample"
+  },
+  "runtime": {
+    "output_dir": "./output",
+    "concurrency": 2,
+    "continue_on_error": false
+  },
+  "nodes": [
+    {
+      "id": "node-input-1",
+      "type": "input",
+      "position": { "x": 100, "y": 200 },
+      "config": {
+        "content": "示例输入内容：用于演示校验错误列表的测试数据",
+        "outputs": [
+          { "id": "out_text", "type": "text", "label": "文本输出" }
+        ]
+      }
+    },
+    {
+      "id": "node-model-1",
+      "type": "model_call",
+      "position": { "x": 400, "y": 200 },
+      "config": {
+        "provider": {
+          "id": "builtin-glm",
+          "label": "内置 GLM",
+          "channel": "builtin"
+        },
+        "model": "glm-4",
+        "prompt": {
+          "template": "请对以下内容进行总结：{{input}}",
+          "variables": ["input"]
+        },
+        "inputs": [
+          { "id": "in_text", "type": "text", "label": "输入文本" }
+        ]
+      }
+    },
+    {
+      "id": "node-model-2",
+      "type": "model_call",
+      "position": { "x": 700, "y": 200 },
+      "config": {
+        "provider": {
+          "id": "builtin-glm",
+          "label": "内置 GLM",
+          "channel": "builtin"
+        },
+        "model": "glm-4",
+        "prompt": {
+          "template": "请对以下内容进行翻译：{{input}}",
+          "variables": ["input"]
+        },
+        "output": {
+          "format": "md",
+          "filename_template": "translated"
+        },
+        "inputs": [
+          { "id": "in_text", "type": "text", "label": "输入文本" }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-1",
+      "from": { "node": "node-input-1", "port": "out_text" },
+      "to": { "node": "node-model-1" }
+    },
+    {
+      "id": "edge-2",
+      "from": { "node": "node-model-1", "port": "out_text" },
+      "to": { "node": "node-model-2", "port": "in_text" }
+    }
+  ]
+}

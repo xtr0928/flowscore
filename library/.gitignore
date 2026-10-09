@@ -1,0 +1,20 @@
+# ── 密钥：绝不上库 ──
+.env
+*.env
+!*.env.example
+**/.env
+*.key
+*.pem
+*token*
+*凭据*
+*密码*
+
+# ── 运行时产物 ──
+__pycache__/
+*.pyc
+*.log
+deliverables/
+.DS_Store
+
+# ── 生成物（由 build_registry.py 产出，但仍提交一份便于站点直接读）──
+# registry.json / INDEX.md 保持提交状态，注释掉下面两行即可改为不提交

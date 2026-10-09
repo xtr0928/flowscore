@@ -1,0 +1,341 @@
+{
+  "format": "flowscore.pipeline",
+  "format_version": "2.1.0",
+  "identity": {
+    "id": "sample-dual-source-qa",
+    "name": "双源问答 + 事实核对",
+    "version": "1.0.0",
+    "author": "xtr0928",
+    "license": "MIT",
+    "created": "2026-10-09",
+    "based_on": null
+  },
+  "about": {
+    "summary": "拿「问题 + 参考文档」起草回答，再独立核对事实后定稿 —— 展示汇合语义与注释注入",
+    "requires": [
+      "一个 LLM 端点（或两个）"
+    ],
+    "produces": [
+      "带出处标注的回答"
+    ]
+  },
+  "globals": {
+    "settings": {
+      "output_dir": "deliverables/",
+      "language": "zh-CN"
+    },
+    "prompts": [
+      {
+        "id": "gp_role",
+        "label": "全局角色",
+        "as": "system",
+        "text": "你是一名严谨的助理。凡是没有依据的内容，必须明说「未知」，不得推测填充。"
+      }
+    ],
+    "apply_to": "all"
+  },
+  "runtime": {
+    "concurrency": 2,
+    "continue_on_error": false,
+    "timeout_sec": 600
+  },
+  "nodes": [
+    {
+      "seq": 1,
+      "id": "n_q",
+      "type": "input",
+      "label": "用户问题",
+      "does": "管线起点：接收一个待回答的问题",
+      "inputs": [],
+      "outputs": [
+        {
+          "port": "text",
+          "type": "text",
+          "carries": "问题的自然语言描述",
+          "to": [
+            {
+              "node": "n_draft",
+              "port": "material"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "seq": 2,
+      "id": "n_doc",
+      "type": "input",
+      "label": "参考文档",
+      "does": "管线起点：接收一段可引用的参考文档",
+      "inputs": [],
+      "outputs": [
+        {
+          "port": "text",
+          "type": "text",
+          "carries": "参考文档片段",
+          "to": [
+            {
+              "node": "n_draft",
+              "port": "material"
+            },
+            {
+              "node": "n_check",
+              "port": "doc"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "seq": 3,
+      "id": "n_draft",
+      "type": "model_call",
+      "label": "起草回答",
+      "does": "结合问题与文档，起草一版带出处的回答",
+      "note": "material 这个端口同时收「问题」和「文档」两份 —— 缺任何一份都没法起草，所以 mode=all。",
+      "inputs": [
+        {
+          "port": "material",
+          "type": "text",
+          "carries": "问题 + 文档（两份合并后的大文本）",
+          "required": true,
+          "mode": "all",
+          "from": [
+            {
+              "node": "n_q",
+              "port": "text"
+            },
+            {
+              "node": "n_doc",
+              "port": "text"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "draft",
+          "type": "text",
+          "carries": "初稿（带出处标注）",
+          "to": [
+            {
+              "node": "n_final",
+              "port": "body"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "deepseek",
+          "model": "deepseek-v4-flash"
+        },
+        "prompt": {
+          "template": "……",
+          "variables": [
+            "input.material"
+          ]
+        },
+        "params": {
+          "temperature": 0.3,
+          "max_tokens": 3000
+        }
+      }
+    },
+    {
+      "seq": 4,
+      "id": "n_check",
+      "type": "model_call",
+      "label": "事实核对",
+      "does": "独立检查初稿里的事实是否都能在文档中找到依据",
+      "annotations": [
+        "n_note2"
+      ],
+      "inputs": [
+        {
+          "port": "doc",
+          "type": "text",
+          "carries": "参考文档（判断依据）",
+          "required": true,
+          "from": [
+            {
+              "node": "n_doc",
+              "port": "text"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "notes",
+          "type": "text",
+          "carries": "存疑事项清单",
+          "to": [
+            {
+              "node": "n_final",
+              "port": "fact_check"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "glm",
+          "model": "glm-5.3"
+        },
+        "prompt": {
+          "template": "……",
+          "variables": [
+            "input.doc"
+          ]
+        },
+        "params": {
+          "temperature": 0.1,
+          "max_tokens": 2000
+        }
+      }
+    },
+    {
+      "seq": 5,
+      "id": "n_note1",
+      "type": "note",
+      "label": "定稿底线",
+      "does": "给「定稿」注入的固定提示词：不得编造",
+      "text": "凡是被事实核对标记为存疑的内容，一律改成「据现有资料无法确认」；不得为了把句子写完整而补造细节。",
+      "inputs": [],
+      "outputs": [
+        {
+          "port": "text",
+          "type": "text",
+          "carries": "固定提示词片段（反编造底线）",
+          "inject": "system",
+          "to": [
+            {
+              "node": "n_final",
+              "port": "bottom_line"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "seq": 6,
+      "id": "n_final",
+      "type": "model_call",
+      "label": "定稿",
+      "does": "合并初稿与核对结果，产出最终回答",
+      "note": "初稿是必须的；核对清单是增强项 —— 核对没跑（比如文档太短没触发）时也应当能出稿。",
+      "inputs": [
+        {
+          "port": "body",
+          "type": "text",
+          "carries": "初稿",
+          "required": true,
+          "from": [
+            {
+              "node": "n_draft",
+              "port": "draft"
+            }
+          ]
+        },
+        {
+          "port": "fact_check",
+          "type": "text",
+          "carries": "存疑事项清单",
+          "required": false,
+          "from": [
+            {
+              "node": "n_check",
+              "port": "notes"
+            }
+          ]
+        },
+        {
+          "port": "bottom_line",
+          "type": "text",
+          "carries": "反编造底线（来自注释节点，静态注入）",
+          "required": true,
+          "inject": "system",
+          "from": [
+            {
+              "node": "n_note1",
+              "port": "text"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "final",
+          "type": "text",
+          "carries": "最终回答",
+          "to": [
+            {
+              "node": "n_out",
+              "port": "content"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "deepseek",
+          "model": "deepseek-v4-flash"
+        },
+        "prompt": {
+          "template": "……",
+          "variables": [
+            "input.body",
+            "input.fact_check",
+            "input.bottom_line"
+          ]
+        },
+        "params": {
+          "temperature": 0.2,
+          "max_tokens": 3000
+        }
+      }
+    },
+    {
+      "seq": 7,
+      "id": "n_out",
+      "type": "output",
+      "label": "落盘",
+      "does": "把最终回答写成文件",
+      "inputs": [
+        {
+          "port": "content",
+          "type": "text",
+          "carries": "最终回答",
+          "required": true,
+          "from": [
+            {
+              "node": "n_final",
+              "port": "final"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "config": {
+        "write_to": "deliverables/answer.md",
+        "format": "md"
+      }
+    },
+    {
+      "seq": 8,
+      "id": "n_note2",
+      "type": "note",
+      "label": "核对要独立",
+      "does": "挂在「事实核对」上的说明（不注入，只给人看）",
+      "text": "这个节点刻意不吃初稿 —— 它只拿原始文档去查。如果让它读初稿，它会顺着初稿的措辞去找依据，等于让写的人自己批改。要独立，就得看不见初稿。",
+      "inputs": [],
+      "outputs": [],
+      "attached_to": [
+        {
+          "node": "n_check"
+        }
+      ]
+    }
+  ]
+}

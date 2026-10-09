@@ -1,0 +1,209 @@
+{
+  "format": "flowscore.pipeline",
+  "format_version": "2.1.0",
+  "identity": {
+    "id": "sample-article-summary",
+    "name": "文章摘要（最小示例）",
+    "version": "1.0.0",
+    "author": "xtr0928",
+    "license": "MIT",
+    "created": "2026-10-09",
+    "based_on": null
+  },
+  "about": {
+    "summary": "读一篇文章，产出摘要与标题 —— 学习流谱格式的最小完整例子",
+    "requires": [
+      "一个 LLM 端点"
+    ],
+    "produces": [
+      "Markdown 摘要"
+    ]
+  },
+  "globals": {
+    "settings": {
+      "output_dir": "deliverables/"
+    },
+    "prompts": [
+      {
+        "id": "gp_style",
+        "label": "全局输出风格",
+        "as": "user_prefix",
+        "text": "输出用 Markdown；不要客套话；中文。"
+      }
+    ],
+    "apply_to": "all"
+  },
+  "runtime": {
+    "concurrency": 1,
+    "continue_on_error": false,
+    "timeout_sec": 300
+  },
+  "nodes": [
+    {
+      "seq": 1,
+      "id": "n_in",
+      "type": "input",
+      "label": "文章原文",
+      "does": "管线起点：接收一整篇文章的正文",
+      "inputs": [],
+      "outputs": [
+        {
+          "port": "text",
+          "type": "text",
+          "carries": "文章正文（纯文本）",
+          "to": [
+            {
+              "node": "n_sum",
+              "port": "article"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "seq": 2,
+      "id": "n_sum",
+      "type": "model_call",
+      "label": "生成摘要",
+      "does": "把文章压缩成三段式摘要",
+      "note": "摘要只基于正文，不看标题 —— 很多标题是标题党，会带偏摘要。",
+      "annotations": [
+        "n_note1"
+      ],
+      "inputs": [
+        {
+          "port": "article",
+          "type": "text",
+          "carries": "文章正文",
+          "required": true,
+          "from": [
+            {
+              "node": "n_in",
+              "port": "text"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "summary",
+          "type": "text",
+          "carries": "三段式摘要",
+          "to": [
+            {
+              "node": "n_title",
+              "port": "article"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "deepseek",
+          "model": "deepseek-v4-flash"
+        },
+        "prompt": {
+          "template": "……",
+          "variables": [
+            "input.article"
+          ]
+        },
+        "params": {
+          "temperature": 0.3,
+          "max_tokens": 2000
+        }
+      }
+    },
+    {
+      "seq": 3,
+      "id": "n_title",
+      "type": "model_call",
+      "label": "拟标题",
+      "does": "根据摘要拟一个不超过 20 字的标题",
+      "inputs": [
+        {
+          "port": "article",
+          "type": "text",
+          "carries": "三段式摘要",
+          "required": true,
+          "from": [
+            {
+              "node": "n_sum",
+              "port": "summary"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "titled",
+          "type": "text",
+          "carries": "标题 + 摘要",
+          "to": [
+            {
+              "node": "n_out",
+              "port": "content"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "deepseek",
+          "model": "deepseek-v4-flash"
+        },
+        "prompt": {
+          "template": "……",
+          "variables": [
+            "input.article"
+          ]
+        },
+        "params": {
+          "temperature": 0.7,
+          "max_tokens": 800
+        }
+      }
+    },
+    {
+      "seq": 4,
+      "id": "n_out",
+      "type": "output",
+      "label": "落盘",
+      "does": "把标题与摘要写成 Markdown 文件",
+      "inputs": [
+        {
+          "port": "content",
+          "type": "text",
+          "carries": "标题 + 摘要",
+          "required": true,
+          "from": [
+            {
+              "node": "n_title",
+              "port": "titled"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "config": {
+        "write_to": "deliverables/summary.md",
+        "format": "md"
+      }
+    },
+    {
+      "seq": 5,
+      "id": "n_note1",
+      "type": "note",
+      "label": "为什么不用标题",
+      "does": "挂在「生成摘要」上的说明（不注入，只给人看）",
+      "text": "标题经常是标题党。如果拿标题参与摘要生成，模型会顺着标题的倾向去概括正文 —— 摘要就不再忠实于全文了。所以这个节点只有 article 一个输入。",
+      "inputs": [],
+      "outputs": [],
+      "attached_to": [
+        {
+          "node": "n_sum"
+        }
+      ]
+    }
+  ]
+}

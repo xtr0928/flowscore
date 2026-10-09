@@ -1,0 +1,436 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "pipeline",
+  "meta": {
+    "name": "协同编码管线（执行段）",
+    "description": "四模型分工协同编码管线：DeepSeek-V4-Pro 需求理解/汇总修复 · DeepSeek-Flash 整体设计/代码审查 · GLM-5.3 逐文件编码 · Qwen3.8-Max 视觉规格/视觉审查。对应 Multi-agent-programming-pipeline/pipeline/coding_pipeline.py 的 Phase 0-4，用于在本编排器中可视化与再编排。",
+    "version": "1.0.0",
+    "author": "xtr0928",
+    "pipeline_id": "coding-pipeline"
+  },
+  "runtime": {
+    "output_dir": "pipeline-output",
+    "concurrency": 3,
+    "continue_on_error": true
+  },
+  "nodes": [
+    {
+      "id": "n_req",
+      "type": "input",
+      "label": "需求文本",
+      "config": {
+        "content": "（把项目需求粘贴到这里。例：做一个单文件 HTML 的番茄钟应用，支持任务列表与统计图）",
+        "outputs": [
+          {
+            "id": "text",
+            "type": "text",
+            "label": "文本"
+          }
+        ]
+      }
+    },
+    {
+      "id": "n_p0",
+      "type": "model_call",
+      "label": "① 需求理解",
+      "config": {
+        "provider": {
+          "id": "deepseek",
+          "label": "DeepSeek",
+          "channel": "builtin",
+          "base_url": "https://api.deepseek.com/v1",
+          "api_key_env": "DEEPSEEK_API_KEY"
+        },
+        "model": "deepseek-v4-pro",
+        "prompt": {
+          "template": "用户需求：\n{{ input.text }}",
+          "variables": [],
+          "system": "你是协同编码管线的编排者 DeepSeek。输入用户需求，输出结构化需求文档（中文）。必须包含以下小节：\n# 需求文档\n## 目标（一段话）\n## 功能清单（- 条目）\n## 边界（做什么/不做什么）\n## 技术约束（语言/框架/环境）\n## 交付物清单（预期产出哪些文件，逐条）\n## 视觉判定\nVISUAL: yes|no ← 仅一行。若交付物含 HTML/CSS/SVG/图表生成代码/图片，填 yes，否则 no"
+        },
+        "output": {
+          "format": "md",
+          "filename_template": "requirements.md",
+          "encoding": "utf-8",
+          "overwrite": "overwrite"
+        },
+        "inputs": [
+          {
+            "id": "in",
+            "type": "any",
+            "label": "需求"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "out",
+            "type": "text",
+            "label": "需求文档"
+          }
+        ]
+      }
+    },
+    {
+      "id": "n_p1",
+      "type": "model_call",
+      "label": "② 整体设计",
+      "config": {
+        "provider": {
+          "id": "deepseek",
+          "label": "DeepSeek",
+          "channel": "builtin",
+          "base_url": "https://api.deepseek.com/v1",
+          "api_key_env": "DEEPSEEK_API_KEY"
+        },
+        "model": "deepseek-flash",
+        "prompt": {
+          "template": "需求文档：\n{{ node.n_p0.out }}",
+          "variables": [],
+          "system": "你是协同编码管线的架构设计者 DeepSeek-Flash。基于需求文档，设计整体情况（不写代码）。输出必须严格按以下格式（中文）：\n# 设计文档\n## 项目结构（树状）\n## 数据模型/接口（如有）\n## 文件清单\n对每个文件输出一节：\n### FILE: <相对路径>\n职责：一句话\n依赖: <逗号分隔；无依赖则写 无>\n规格：<完整规格>\n文件按实施顺序排列；相互独立的文件前可用 ## GROUP 标记（可并行编写）。"
+        },
+        "output": {
+          "format": "md",
+          "filename_template": "design.md",
+          "encoding": "utf-8",
+          "overwrite": "overwrite"
+        },
+        "inputs": [
+          {
+            "id": "req",
+            "type": "any",
+            "label": "需求文档"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "out",
+            "type": "text",
+            "label": "设计文档"
+          }
+        ]
+      }
+    },
+    {
+      "id": "n_p1b",
+      "type": "model_call",
+      "label": "③ 视觉规格",
+      "config": {
+        "provider": {
+          "id": "token8341",
+          "label": "token8341",
+          "channel": "builtin",
+          "base_url": "https://admin.token8341.com/v1",
+          "api_key_env": "TOKEN8341_API_KEY"
+        },
+        "model": "qwen3.8-max",
+        "prompt": {
+          "template": "需求文档：\n{{ node.n_p0.out }}\n\n设计文档（节选文件清单）：\n{{ node.n_p1.out }}",
+          "variables": [],
+          "system": "你是协同编码管线的视觉与 UI 设计者 Qwen。基于需求与设计文档，输出视觉规格（中文），包含：\n# 视觉规格\n## 页面清单（- 页面路径 + 用途）\n## 每个页面的视觉规格（布局结构、配色方案、字号层级、组件样式、响应式要求）\n## 图表/图片清单（类型、数据标注要求）\n## 视觉检查清单（可逐项核对的检查项）"
+        },
+        "output": {
+          "format": "md",
+          "filename_template": "visual_spec.md",
+          "encoding": "utf-8",
+          "overwrite": "overwrite"
+        },
+        "inputs": [
+          {
+            "id": "req",
+            "type": "any",
+            "label": "需求"
+          },
+          {
+            "id": "design",
+            "type": "any",
+            "label": "设计"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "out",
+            "type": "text",
+            "label": "视觉规格"
+          }
+        ]
+      }
+    },
+    {
+      "id": "n_p2",
+      "type": "model_call",
+      "label": "④ 逐文件编码",
+      "config": {
+        "provider": {
+          "id": "zhipu",
+          "label": "智谱 GLM",
+          "channel": "builtin",
+          "base_url": "https://open.bigmodel.cn/api/paas/v4",
+          "api_key_env": "ZHIPU_API_KEY"
+        },
+        "model": "glm-5.3",
+        "prompt": {
+          "template": "设计文档（含文件清单与逐文件规格）：\n{{ node.n_p1.out }}\n\n按清单中每个文件的规格逐一输出完整代码：",
+          "variables": [],
+          "system": "你是协同编码管线的代码编写者 GLM-5.3。按规格编写该文件的完整代码。规则：只输出完整代码，不要任何解释、不要 markdown 代码块围栏。\n若文件较大：必须完整输出全文，禁止省略、禁止以注释代替内容、禁止改写与任务无关的部分。\n真实管线中此环节逐文件调用、每次只带该文件规格与声明的依赖文件（独立上下文）。"
+        },
+        "output": {
+          "format": "txt",
+          "filename_template": "code-output.txt",
+          "encoding": "utf-8",
+          "overwrite": "overwrite"
+        },
+        "inputs": [
+          {
+            "id": "design",
+            "type": "any",
+            "label": "设计文档"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "out",
+            "type": "text",
+            "label": "代码文件"
+          }
+        ]
+      }
+    },
+    {
+      "id": "n_p3a",
+      "type": "model_call",
+      "label": "⑤ 代码审查",
+      "config": {
+        "provider": {
+          "id": "deepseek",
+          "label": "DeepSeek",
+          "channel": "builtin",
+          "base_url": "https://api.deepseek.com/v1",
+          "api_key_env": "DEEPSEEK_API_KEY"
+        },
+        "model": "deepseek-flash",
+        "prompt": {
+          "template": "需求文档：\n{{ node.n_p0.out }}\n\n设计规格：\n{{ node.n_p1.out }}\n\n代码（逐文件审查）：\n{{ node.n_p2.out }}",
+          "variables": [],
+          "system": "你是本管线新开启的独立审查实例，与设计者、编码者互不相识，不承袭任何先前结论。以需求原文为最高基准、规格文档为对照，独立审查代码（逻辑/安全/风格/遗漏/规格偏差）。\n输出第一行：✅ 通过 或 ⚠️ 需修改；若需修改，随后逐条列出「问题位置 + 问题说明 + 修改建议」。"
+        },
+        "output": {
+          "format": "md",
+          "filename_template": "review_code.md",
+          "encoding": "utf-8",
+          "overwrite": "overwrite"
+        },
+        "inputs": [
+          {
+            "id": "req",
+            "type": "any",
+            "label": "需求"
+          },
+          {
+            "id": "spec",
+            "type": "any",
+            "label": "规格"
+          },
+          {
+            "id": "code",
+            "type": "any",
+            "label": "代码"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "out",
+            "type": "text",
+            "label": "代码审查报告"
+          }
+        ]
+      }
+    },
+    {
+      "id": "n_p3b",
+      "type": "model_call",
+      "label": "⑥ 视觉审查",
+      "config": {
+        "provider": {
+          "id": "token8341",
+          "label": "token8341",
+          "channel": "builtin",
+          "base_url": "https://admin.token8341.com/v1",
+          "api_key_env": "TOKEN8341_API_KEY"
+        },
+        "model": "qwen3.8-max",
+        "prompt": {
+          "template": "视觉规格：\n{{ node.n_p1b.out }}\n\n页面与代码：\n{{ node.n_p2.out }}",
+          "variables": [],
+          "system": "你是协同编码管线的视觉审查者 Qwen。对照视觉规格检查页面/图片的实际渲染效果。\n检查：布局与规格一致性 / 配色 / 文字可读性与截断 / 元素可见性 / 图表标注。\n输出：✅ 通过 或 ⚠️ 需修改（逐条列出问题位置+建议）。真实管线中此环节对页面截图做视觉审查。"
+        },
+        "output": {
+          "format": "md",
+          "filename_template": "review_visual.md",
+          "encoding": "utf-8",
+          "overwrite": "overwrite"
+        },
+        "inputs": [
+          {
+            "id": "spec",
+            "type": "any",
+            "label": "视觉规格"
+          },
+          {
+            "id": "code",
+            "type": "any",
+            "label": "代码"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "out",
+            "type": "text",
+            "label": "视觉审查报告"
+          }
+        ]
+      }
+    },
+    {
+      "id": "n_p4",
+      "type": "model_call",
+      "label": "⑦ 汇总修复",
+      "config": {
+        "provider": {
+          "id": "deepseek",
+          "label": "DeepSeek",
+          "channel": "builtin",
+          "base_url": "https://api.deepseek.com/v1",
+          "api_key_env": "DEEPSEEK_API_KEY"
+        },
+        "model": "deepseek-v4-pro",
+        "prompt": {
+          "template": "代码审查报告：\n{{ node.n_p3a.out }}\n\n视觉审查报告：\n{{ node.n_p3b.out }}",
+          "variables": [],
+          "system": "你是协同编码管线的编排者 DeepSeek，负责应用审查修复并生成最终交付报告。\n修复时输出修复后的完整文件内容，不要解释、不要 markdown 围栏。\n报告包含：# 交付报告\n## 交付物（文件清单与用途）\n## 审查与修复摘要\n## 验证状态\n## 残留风险与使用说明"
+        },
+        "output": {
+          "format": "md",
+          "filename_template": "final_report.md",
+          "encoding": "utf-8",
+          "overwrite": "overwrite"
+        },
+        "inputs": [
+          {
+            "id": "review_code",
+            "type": "any",
+            "label": "代码审查"
+          },
+          {
+            "id": "review_visual",
+            "type": "any",
+            "label": "视觉审查"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "out",
+            "type": "text",
+            "label": "最终报告"
+          }
+        ]
+      }
+    },
+    {
+      "id": "n_end",
+      "type": "output",
+      "label": "交付报告",
+      "config": {
+        "format": "md",
+        "filename_template": "final_report.md",
+        "encoding": "utf-8",
+        "overwrite": "overwrite",
+        "inputs": [
+          {
+            "id": "in",
+            "type": "any",
+            "label": "内容"
+          }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "n_req",
+      "from_port": "text",
+      "to": "n_p0",
+      "to_port": "in"
+    },
+    {
+      "from": "n_p0",
+      "from_port": "out",
+      "to": "n_p1",
+      "to_port": "req"
+    },
+    {
+      "from": "n_p0",
+      "from_port": "out",
+      "to": "n_p1b",
+      "to_port": "req"
+    },
+    {
+      "from": "n_p0",
+      "from_port": "out",
+      "to": "n_p3a",
+      "to_port": "req"
+    },
+    {
+      "from": "n_p1",
+      "from_port": "out",
+      "to": "n_p1b",
+      "to_port": "design"
+    },
+    {
+      "from": "n_p1",
+      "from_port": "out",
+      "to": "n_p2",
+      "to_port": "design"
+    },
+    {
+      "from": "n_p1",
+      "from_port": "out",
+      "to": "n_p3a",
+      "to_port": "spec"
+    },
+    {
+      "from": "n_p2",
+      "from_port": "out",
+      "to": "n_p3a",
+      "to_port": "code"
+    },
+    {
+      "from": "n_p1b",
+      "from_port": "out",
+      "to": "n_p3b",
+      "to_port": "spec"
+    },
+    {
+      "from": "n_p2",
+      "from_port": "out",
+      "to": "n_p3b",
+      "to_port": "code"
+    },
+    {
+      "from": "n_p3a",
+      "from_port": "out",
+      "to": "n_p4",
+      "to_port": "review_code"
+    },
+    {
+      "from": "n_p3b",
+      "from_port": "out",
+      "to": "n_p4",
+      "to_port": "review_visual"
+    },
+    {
+      "from": "n_p4",
+      "from_port": "out",
+      "to": "n_end",
+      "to_port": "in"
+    }
+  ]
+}

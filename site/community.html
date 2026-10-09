@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>社区投稿 · 流谱 FlowScore</title>
+<link rel="icon" href="data:,">
+<style>*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --paper:#faf8f3; --ink:#1c1a16; --ink-2:#4a453d; --ink-3:#8a8377;
+  --rule:#e2ddd2; --card:#ffffff; --accent:#a63a2a; --accent-soft:#f3e7e3;
+  --green:#3f7a4d; --amber:#a8761f; --gray:#9a938a;
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC","STSong","SimSun",serif;
+  --sans:"Noto Sans SC","Source Han Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",-apple-system,sans-serif;
+  --mono:"JetBrains Mono","SF Mono","Menlo","Consolas",monospace;
+}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;padding-left:190px}
+a{color:inherit;text-decoration:none}
+
+#top{position:sticky;top:0;z-index:100;background:rgba(250,248,243,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--rule)}
+#top-in{max-width:1400px;margin:0 auto;padding:18px 28px 14px}
+#brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:2px}
+#brand h1{font-family:var(--serif);font-size:23px;font-weight:700;letter-spacing:.5px}
+#brand .stats{margin-left:auto;display:flex;gap:18px;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+#brand .stats b{color:var(--accent);font-weight:600}
+
+#wrap{max-width:1400px;margin:0 auto;padding:22px 28px 80px}
+#meta{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-bottom:14px}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:4px;padding:15px 16px 13px;display:flex;flex-direction:column;gap:9px;transition:.18s;position:relative;overflow:hidden}
+.card:hover{border-color:var(--ink-3);box-shadow:0 2px 12px rgba(28,26,22,.07);transform:translateY(-1px)}
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:transparent;transition:.18s}
+.card[data-k="high"]::before{background:var(--green)}
+.c-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.c-name{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--ink);word-break:break-all;line-height:1.35}
+.c-name span{color:var(--ink-3);font-weight:400}
+.c-type{font-size:10.5px;padding:2px 8px;background:var(--accent-soft);color:var(--accent);border-radius:2px;white-space:nowrap}
+.c-desc{font-size:13.2px;color:var(--ink);line-height:1.62;text-wrap:pretty}
+.c-en{font-size:11.5px;color:var(--ink-3);line-height:1.5;font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.c-foot{margin-top:auto;padding-top:9px;border-top:1px solid var(--rule);display:flex;align-items:center;gap:11px;font-family:var(--mono);font-size:11px;color:var(--ink-3);flex-wrap:wrap}
+.c-star{color:var(--accent);font-weight:600}
+.c-go{margin-left:auto;color:var(--accent);font-weight:600;font-size:11.5px;transition:.15s;white-space:nowrap}
+.card:hover .c-go{letter-spacing:.4px}
+#more{text-align:center;padding:30px 0;font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+.empty{text-align:center;padding:80px 20px;color:var(--ink-3);font-family:var(--mono);font-size:13px}
+footer{max-width:1400px;margin:0 auto;padding:26px 28px 40px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:11px;color:var(--ink-3);display:flex;gap:16px;flex-wrap:wrap}
+footer a{color:var(--accent)}
+
+/* ── 侧边栏 ── */
+#side{position:fixed;left:0;top:0;bottom:0;width:190px;z-index:110;background:var(--paper);border-right:1px solid var(--rule);padding:20px 16px;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+.gen-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 14px;
+  background:var(--accent);color:#fff;border-radius:3px;font-size:13.5px;font-weight:600;
+  white-space:nowrap;flex-shrink:0;transition:.18s;
+  box-shadow:0 2px 8px rgba(166,58,42,.22);letter-spacing:.5px}
+.gen-btn:hover{background:#8f3226;transform:translateY(-1px);box-shadow:0 4px 14px rgba(166,58,42,.32)}
+.gen-btn:active{transform:translateY(0)}
+#side-toggle{align-self:flex-end;width:32px;height:26px;display:flex;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--rule);border-radius:4px;cursor:pointer;color:var(--ink-3);font-size:14px;line-height:1;transition:.15s;flex-shrink:0;font-family:var(--mono);padding:0}
+#side-toggle:hover{border-color:var(--ink-3);color:var(--ink)}
+body.side-collapsed{padding-left:54px}
+body.side-collapsed #side{width:54px;padding:20px 8px}
+body.side-collapsed .lbl{display:none}
+body.side-collapsed #side-toggle{align-self:center}
+body.side-collapsed .gen-btn,body.side-collapsed .side-link{justify-content:center;padding-left:6px;padding-right:6px}
+.side-sep{height:1px;background:var(--rule);margin:4px 0}
+.side-nav{display:flex;flex-direction:column;gap:2px}
+.side-link{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:4px;font-size:13.5px;color:var(--ink-2);transition:.15s}
+.side-link:hover{background:var(--accent-soft);color:var(--ink)}
+.side-link.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+
+/* ── 社区投稿页 ── */
+.cm-hero{background:linear-gradient(135deg,#fdfaf6 0%,#faf2ee 100%);border:1px solid #e9d6d0;border-left:4px solid var(--accent);border-radius:5px;padding:20px 24px 18px;margin-bottom:20px}
+.cm-hero h2{font-family:var(--serif);font-size:21px;margin:0 0 8px}
+.cm-hero p{font-size:13.6px;color:var(--ink-2);line-height:1.78;margin:0 0 4px;max-width:980px}
+.cm-steps{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 16px}
+.cm-step{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e9d6d0;border-radius:3px;padding:8px 13px;font-size:12.5px;color:var(--ink-2)}
+.cm-step b{color:var(--accent);font-family:var(--mono);font-size:11.5px}
+.cm-btn{display:inline-block;background:var(--accent);color:#fff;border-radius:3px;padding:9px 18px;font-size:13.5px;font-weight:600;transition:.18s;box-shadow:0 2px 8px rgba(166,58,42,.22);letter-spacing:.3px}
+.cm-btn:hover{background:#8f3226;transform:translateY(-1px)}
+.c-sub{font-size:10.5px;padding:2px 8px;background:#eef4ef;color:var(--green);border-radius:2px;white-space:nowrap}
+.c-tags{display:flex;gap:6px;flex-wrap:wrap}
+.c-tags span{font-size:10.5px;padding:2px 8px;background:#f0ede6;color:var(--ink-2);border-radius:2px;white-space:nowrap}
+
+@media(max-width:640px){#top-in,#wrap{padding-left:16px;padding-right:16px}#brand .stats{display:none}#grid{grid-template-columns:1fr}.gen-btn{padding:8px 13px;font-size:12.5px}}
+@media(max-width:820px){
+  body{padding-left:0}#side-toggle{display:none}
+  #side{position:static;width:auto;height:auto;bottom:auto;border-right:0;border-bottom:1px solid var(--rule);padding:10px 16px;gap:8px;flex-direction:row;flex-wrap:wrap;align-items:center}
+  #side .gen-btn{width:auto}
+  .side-sep{display:none}
+  .side-nav{flex-direction:row;flex-wrap:wrap}
+  body.side-collapsed{padding-left:0}
+  body.side-collapsed #side{width:auto;padding:10px 16px}
+  body.side-collapsed .lbl{display:inline}
+}
+</style>
+</head>
+<body>
+<aside id="side">
+  <button id="side-toggle" title="收起侧边栏">«</button>
+  <a class="gen-btn" href="orchestrator/" target="_blank" rel="noopener"><span class="ic">▶</span><span class="lbl">工作流生成器</span></a>
+  <div class="side-sep"></div>
+  <nav class="side-nav">
+    <a class="side-link" href="./"><span class="ic">▤</span><span class="lbl">管线库</span></a>
+    <a class="side-link" href="others.html"><span class="ic">▦</span><span class="lbl">其他工作流</span></a>
+    <a class="side-link" href="intro.html"><span class="ic">📖</span><span class="lbl">简介</span></a>
+    <a class="side-link" href="hot.html"><span class="ic">🔥</span><span class="lbl">热度榜</span></a>
+    <a class="side-link" href="agent.html" target="_blank" rel="noopener"><span class="ic">⚡</span><span class="lbl">agent 更快查找</span></a>
+    <a class="side-link" href="https://github.com/xtr0928/flowscore/issues/new?template=submit.yml" target="_blank" rel="noopener"><span class="ic">✍</span><span class="lbl">投稿</span></a>
+    <a class="side-link on" href="community.html"><span class="ic">📬</span><span class="lbl">社区投稿</span></a>
+  </nav>
+  <div class="side-sep"></div>
+  <nav class="side-nav">
+    <a class="side-link" href="https://token8341.com/zh" target="_blank" rel="noopener" title="token8341 · 中转 API 八折"><span class="ic">🎫</span><span class="lbl">八折 Token</span></a>
+    <a class="side-link" href="https://github.com/xtr0928" target="_blank" rel="noopener" title="作者与赞助 · GitHub"><span class="ic">❤</span><span class="lbl">作者与赞助</span></a>
+  </nav>
+</aside>
+<header id="top"><div id="top-in">
+  <div id="brand">
+    <h1>流谱 · 社区投稿</h1>
+    <div class="stats" id="stats"></div>
+  </div>
+</div></header>
+
+<main id="wrap">
+  <section class="cm-hero">
+    <h2>📬 社区投稿</h2>
+    <p>这里只放<b>通过筛选</b>的投稿项目——读过 README、核查过部署方式，再由服务器本地模型判定「与 AI 工作流 / agent 相关」后收录。</p>
+    <div class="cm-steps">
+      <div class="cm-step"><b>①</b>点「投稿」填仓库链接</div>
+      <div class="cm-step"><b>②</b>服务器核查 + 本地模型判定</div>
+      <div class="cm-step"><b>③</b>通过后出现在本页</div>
+    </div>
+    <a class="cm-btn" href="https://github.com/xtr0928/flowscore/issues/new?template=submit.yml" target="_blank" rel="noopener">✍ 我要投稿</a>
+  </section>
+  <div id="meta">正在加载…</div>
+  <div id="grid"></div>
+  <div id="more"></div>
+</main>
+
+<footer>
+  <span>收录标准：能跑起来（部署可核查）· 与 AI 工作流 / agent 相关 · 信息完整</span>
+  <span>首批收录为站长自荐项目 · 欢迎<a href="https://github.com/xtr0928/flowscore/issues/new?template=submit.yml" target="_blank" rel="noopener">把你的项目放进来</a></span>
+</footer>
+<script>
+(function(){
+  var KEY='fs_side', b=document.body, t=document.getElementById('side-toggle');
+  try{ if(localStorage.getItem(KEY)==='1') b.classList.add('side-collapsed'); }catch(e){}
+  function sync(){
+    var c=b.classList.contains('side-collapsed');
+    t.textContent=c?'»':'«';
+    t.title=c?'展开侧边栏':'收起侧边栏';
+  }
+  t.addEventListener('click',function(){
+    b.classList.toggle('side-collapsed');
+    try{ localStorage.setItem(KEY, b.classList.contains('side-collapsed')?'1':'0'); }catch(e){}
+    sync();
+  });
+  sync();
+})();</script>
+<script>
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmt(n){ n = Number(n)||0; return n>=1000 ? (n/1000).toFixed(n>=10000?0:1)+'k' : String(n); }
+
+const BASE = '';
+const grid = document.getElementById('grid');
+const metaEl = document.getElementById('meta');
+const moreEl = document.getElementById('more');
+
+function cardEl(d){
+  const [owner, repo] = (d.full_name||'').includes('/') ? d.full_name.split('/') : ['', d.full_name||''];
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.setAttribute('data-k', 'high');
+  const tags = (d.topics||[]).slice(0,4).map(t => `<span>${esc(t)}</span>`).join('');
+  const en = d.desc_en ? `<div class="c-en">${esc(String(d.desc_en).replace(/[#>*`!\-\[]/g,' ').replace(/\s+/g,' ').slice(0,150))}</div>` : '';
+  el.innerHTML =
+    `<div class="c-head">` +
+      `<div class="c-name"><span>${esc(owner)}/</span>${esc(repo)}</div>` +
+      `<span class="c-type">${esc(d.f_use || '投稿')}</span>` +
+      (d.submission ? `<span class="c-sub">投稿人 @${esc(d.submission)}</span>` : '') +
+    `</div>` +
+    `<div class="c-desc">${esc(d.summary || '（作者暂未提供简介，可点 GitHub 仓库查看）')}</div>` +
+    en +
+    (tags ? `<div class="c-tags">${tags}</div>` : '') +
+    `<div class="c-foot">` +
+      `<span class="c-star">★ ${fmt(d.stars)}</span>` +
+      (d.lang ? `<span>${esc(d.lang)}</span>` : '') +
+      (d.pushed_at ? `<span>更新 ${esc(String(d.pushed_at).slice(0,10))}</span>` : '') +
+      `<a class="c-go" href="${esc(d.url)}" target="_blank" rel="noopener">GitHub ↗</a>` +
+    `</div>`;
+  return el;
+}
+
+fetch(BASE + '/api/community?limit=60&sort=new', {cache:'no-cache'}).then(r => r.json()).then(j => {
+  const n = j.total || 0;
+  metaEl.textContent = `已收录 ${n} 个项目 · 按最新收录排序`;
+  document.getElementById('stats').innerHTML = `<span><b>${n}</b> 个已收录</span><span>持续征集中</span>`;
+  grid.innerHTML = '';
+  if (!j.items || !j.items.length){
+    grid.innerHTML = '<div class="empty">还没有通过的投稿——你可以成为第一个：点上方「✍ 我要投稿」</div>';
+    return;
+  }
+  const frag = document.createDocumentFragment();
+  j.items.forEach(d => frag.appendChild(cardEl(d)));
+  grid.appendChild(frag);
+  if (n > j.items.length) moreEl.textContent = `仅显示最新 ${j.items.length} 个（共 ${n} 个）`;
+}).catch(e => {
+  metaEl.textContent = '加载失败，请刷新重试';
+});
+</script>
+</body>
+</html>

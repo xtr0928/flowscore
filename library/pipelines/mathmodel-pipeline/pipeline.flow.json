@@ -1,0 +1,1031 @@
+{
+  "format": "flowscore.pipeline",
+  "format_version": "2.1.0",
+  "identity": {
+    "id": "mathmodel-pipeline",
+    "name": "数模管线 V5.2（参谋组 + 单一拍板者 + 产物回归门）",
+    "version": "5.2.0",
+    "author": "xtr0928",
+    "license": "MIT",
+    "created": "2026-08-15",
+    "based_on": null
+  },
+  "about": {
+    "summary": "四模型参谋只交候选与分歧 → 单一拍板者定稿（定稿即法律）→ 求解进 registry → 数值门禁 → 装配写作 → 四评 → 修复回路 → 产物分数回归门",
+    "requires": [
+      "四个模型端点（GLM / Kimi / DeepSeek / Qwen）",
+      "官方论文模板",
+      "上一版产物基线分"
+    ],
+    "produces": [
+      "竞赛论文 PDF",
+      "求解源码",
+      "数字 registry（含 SHA-512）",
+      "AI 使用声明"
+    ]
+  },
+  "globals": {
+    "settings": {
+      "competition_baseline": "华数杯基线 50 / 美赛基线 78",
+      "freshness": "on",
+      "hash_algo": "sha512",
+      "zero_context_isolation": true,
+      "deadline_hours": 72
+    },
+    "prompts": [
+      {
+        "id": "gp_honesty",
+        "label": "全局诚实性",
+        "as": "system",
+        "text": "禁止编造任何数字、文献或实验结论。没有依据就明确写「未知」或「无依据」，不要猜。"
+      },
+      {
+        "id": "gp_isolate",
+        "label": "零上下文隔离",
+        "as": "system",
+        "text": "你只应基于本次任务材料作答，不要引用其他阶段或其他题目的历史结论。"
+      }
+    ],
+    "apply_to": "all"
+  },
+  "runtime": {
+    "concurrency": 4,
+    "continue_on_error": false,
+    "timeout_sec": 7200
+  },
+  "nodes": [
+    {
+      "seq": 1,
+      "id": "n_in",
+      "type": "input",
+      "label": "赛题原文",
+      "does": "管线入口：提供竞赛题目原文与附件说明",
+      "inputs": [],
+      "outputs": [
+        {
+          "port": "text",
+          "type": "text",
+          "carries": "赛题原文（含附件口径说明）",
+          "to": [
+            {
+              "node": "n_s0",
+              "port": "req"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "seq": 2,
+      "id": "n_s0",
+      "type": "model_call",
+      "label": "S0 读题解析",
+      "does": "确定性解析 + LLM 辅助：拆出要求单元、硬约束全集、附件口径、题型判定",
+      "note": "硬约束用 D2 模板输出，供 S1.5 拍板者逐条对照处理",
+      "inputs": [
+        {
+          "port": "req",
+          "type": "text",
+          "carries": "赛题原文",
+          "from": [
+            {
+              "node": "n_in",
+              "port": "text"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "spec",
+          "type": "json",
+          "carries": "要求单元 + 硬约束全集 + 题型判定",
+          "to": [
+            {
+              "node": "n_ad_glm",
+              "port": "req"
+            },
+            {
+              "node": "n_ad_kimi",
+              "port": "req"
+            },
+            {
+              "node": "n_ad_ds",
+              "port": "req"
+            },
+            {
+              "node": "n_ad_qwen",
+              "port": "req"
+            },
+            {
+              "node": "n_pick",
+              "port": "constraints"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "deepseek",
+          "model": "deepseek-v4-flash"
+        },
+        "prompt": {
+          "template": "请解析这道数学建模竞赛题目：\n1) 逐条列出要求单元\n2) 抽取硬约束全集（数据口径、单位、范围）\n3) 判定题型与附件数据口径\n4) 标注任何歧义点\n\n题目全文：\n{{ input.req }}",
+          "variables": [],
+          "system": ""
+        },
+        "params": {}
+      }
+    },
+    {
+      "seq": 3,
+      "id": "n_ad_glm",
+      "type": "model_call",
+      "label": "S1 参谋 · GLM",
+      "does": "隔离实例：只交候选方案（每问方法/参数/依据），不产定稿、不参与拍板",
+      "note": "零上下文隔离：参谋实例之间互不可见，防止互相锚定",
+      "inputs": [
+        {
+          "port": "req",
+          "type": "json",
+          "carries": "题目解析（要求单元 + 硬约束）",
+          "from": [
+            {
+              "node": "n_s0",
+              "port": "spec"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "proposal",
+          "type": "json",
+          "carries": "候选方案摘要",
+          "to": [
+            {
+              "node": "n_merge",
+              "port": "proposals"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "glm",
+          "model": "glm-5.3"
+        },
+        "prompt": {
+          "template": "你是建模参谋。针对下列要求与约束，给出你的建模方案：\n1) 每一问的方法与模型选择\n2) 关键参数取值及依据\n3) 数据预处理与验证思路\n\n【题目解析】\n{{ input.req }}\n\n只交候选方案，不要写论文。",
+          "variables": [],
+          "system": ""
+        },
+        "params": {}
+      }
+    },
+    {
+      "seq": 4,
+      "id": "n_ad_kimi",
+      "type": "model_call",
+      "label": "S1 参谋 · Kimi",
+      "does": "隔离实例：只交候选方案（每问方法/参数/依据），不产定稿、不参与拍板",
+      "note": "零上下文隔离：参谋实例之间互不可见，防止互相锚定",
+      "inputs": [
+        {
+          "port": "req",
+          "type": "json",
+          "carries": "题目解析（要求单元 + 硬约束）",
+          "from": [
+            {
+              "node": "n_s0",
+              "port": "spec"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "proposal",
+          "type": "json",
+          "carries": "候选方案摘要",
+          "to": [
+            {
+              "node": "n_merge",
+              "port": "proposals"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "kimi",
+          "model": "kimi-k2"
+        },
+        "prompt": {
+          "template": "你是建模参谋。针对下列要求与约束，给出你的建模方案：\n1) 每一问的方法与模型选择\n2) 关键参数取值及依据\n3) 数据预处理与验证思路\n\n【题目解析】\n{{ input.req }}\n\n只交候选方案，不要写论文。",
+          "variables": [],
+          "system": ""
+        },
+        "params": {}
+      }
+    },
+    {
+      "seq": 5,
+      "id": "n_ad_ds",
+      "type": "model_call",
+      "label": "S1 参谋 · DeepSeek",
+      "does": "隔离实例：只交候选方案（每问方法/参数/依据），不产定稿、不参与拍板",
+      "note": "零上下文隔离：参谋实例之间互不可见，防止互相锚定",
+      "inputs": [
+        {
+          "port": "req",
+          "type": "json",
+          "carries": "题目解析（要求单元 + 硬约束）",
+          "from": [
+            {
+              "node": "n_s0",
+              "port": "spec"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "proposal",
+          "type": "json",
+          "carries": "候选方案摘要",
+          "to": [
+            {
+              "node": "n_merge",
+              "port": "proposals"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "deepseek",
+          "model": "deepseek-v4-flash"
+        },
+        "prompt": {
+          "template": "你是建模参谋。针对下列要求与约束，给出你的建模方案：\n1) 每一问的方法与模型选择\n2) 关键参数取值及依据\n3) 数据预处理与验证思路\n\n【题目解析】\n{{ input.req }}\n\n只交候选方案，不要写论文。",
+          "variables": [],
+          "system": ""
+        },
+        "params": {}
+      }
+    },
+    {
+      "seq": 6,
+      "id": "n_ad_qwen",
+      "type": "model_call",
+      "label": "S1 参谋 · Qwen",
+      "does": "隔离实例：只交候选方案（每问方法/参数/依据），不产定稿、不参与拍板",
+      "note": "零上下文隔离：参谋实例之间互不可见，防止互相锚定",
+      "inputs": [
+        {
+          "port": "req",
+          "type": "json",
+          "carries": "题目解析（要求单元 + 硬约束）",
+          "from": [
+            {
+              "node": "n_s0",
+              "port": "spec"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "proposal",
+          "type": "json",
+          "carries": "候选方案摘要",
+          "to": [
+            {
+              "node": "n_merge",
+              "port": "proposals"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "qwen",
+          "model": "qwen3-235b"
+        },
+        "prompt": {
+          "template": "你是建模参谋。针对下列要求与约束，给出你的建模方案：\n1) 每一问的方法与模型选择\n2) 关键参数取值及依据\n3) 数据预处理与验证思路\n\n【题目解析】\n{{ input.req }}\n\n只交候选方案，不要写论文。",
+          "variables": [],
+          "system": ""
+        },
+        "params": {}
+      }
+    },
+    {
+      "seq": 7,
+      "id": "n_merge",
+      "type": "model_call",
+      "label": "S1.5a 分歧汇总",
+      "does": "把四份参谋方案汇总，显式列出冲突点（分歧清单），不做取舍",
+      "note": "mode=all：四份参谋方案**全部到齐**才开始汇总 —— 少一份就不是参谋组",
+      "inputs": [
+        {
+          "port": "proposals",
+          "type": "json",
+          "carries": "四份参谋方案",
+          "mode": "all",
+          "from": [
+            {
+              "node": "n_ad_glm",
+              "port": "proposal"
+            },
+            {
+              "node": "n_ad_kimi",
+              "port": "proposal"
+            },
+            {
+              "node": "n_ad_ds",
+              "port": "proposal"
+            },
+            {
+              "node": "n_ad_qwen",
+              "port": "proposal"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "conflicts",
+          "type": "json",
+          "carries": "分歧清单（每条附各方理由）",
+          "to": [
+            {
+              "node": "n_pick",
+              "port": "conflicts"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "deepseek",
+          "model": "deepseek-v4-flash"
+        },
+        "prompt": {
+          "template": "下面是四个模型各自给出的建模方案。请：\n1) 汇总每份方案的核心主张\n2) 显式列出**分歧清单**：每条冲突点写清各方立场与理由\n3) 不要做取舍，不要推荐\n\n{{ input.proposals }}",
+          "variables": [],
+          "system": ""
+        },
+        "params": {}
+      }
+    },
+    {
+      "seq": 9,
+      "id": "n_pick",
+      "type": "model_call",
+      "label": "S1.5b 总设计定稿",
+      "does": "单一拍板者：总结四份方案 → 挑出/融合最优方案 → 产出《设计方案定稿》。定稿即法律。",
+      "note": "必须新开实例（零上下文）—— 沿用参谋实例会路径固执。定稿产出后 hash 登记，改动触发下游全链作废。",
+      "inputs": [
+        {
+          "port": "conflicts",
+          "type": "json",
+          "carries": "分歧清单",
+          "from": [
+            {
+              "node": "n_merge",
+              "port": "conflicts"
+            }
+          ]
+        },
+        {
+          "port": "constraints",
+          "type": "json",
+          "carries": "S0 硬约束全集",
+          "from": [
+            {
+              "node": "n_s0",
+              "port": "spec"
+            }
+          ]
+        },
+        {
+          "port": "rules",
+          "type": "text",
+          "carries": "铁律（注释节点注入 system）",
+          "inject": "system",
+          "from": [
+            {
+              "node": "n_note1",
+              "port": "text"
+            }
+          ]
+        },
+        {
+          "port": "extra",
+          "type": "text",
+          "carries": "博士补充意见（半自动模式）",
+          "required": false,
+          "inject": "user_prefix",
+          "from": [
+            {
+              "node": "n_note4",
+              "port": "text"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "final",
+          "type": "json",
+          "carries": "《设计方案定稿》",
+          "to": [
+            {
+              "node": "n_s2",
+              "port": "design"
+            },
+            {
+              "node": "n_s4",
+              "port": "design"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "deepseek",
+          "model": "deepseek-v4-flash 全新实例（零上下文）"
+        },
+        "prompt": {
+          "template": "你是本条管线的**唯一拍板者**。你的产出《设计方案定稿》是后续所有阶段的唯一真源。\n\n请基于：\n- 分歧清单\n- 硬约束全集\n决出每一问的最终方案，并写明：\n1) 每问方法与依据（为什么选它，不选被否方案的理由）\n2) 参数取值及理由\n3) 硬约束逐条处理方式\n4) 反直觉风险预判\n5) 数字口径：每个结论数字由哪份脚本产出\n\n【分歧清单】\n{{ input.conflicts }}\n\n【硬约束全集】\n{{ input.constraints }}",
+          "variables": [],
+          "system": ""
+        },
+        "params": {}
+      }
+    },
+    {
+      "seq": 8,
+      "id": "n_note1",
+      "type": "note",
+      "label": "铁律（注入拍板者）",
+      "does": "把 V5.2 的六条铁律作为 system 提示词注入拍板者",
+      "text": "【V5.2 铁律】\n1. 定稿即法律：你的定稿是唯一真源，后续阶段不得自创方法/参数/口径。\n2. 单一责任人：每问求解、每个数字、每段正文都有且仅有一个责任人。\n3. 数字唯一入口：论文数字只从 registry 注入，writer 禁止生成数字。\n4. 修一处 → 下游全链重做（freshness）。\n5. 产物分数进门禁：不过 S7 不出管线。\n6. 零上下文隔离：参谋、拍板、评审、写作各实例互不带上下文。",
+      "inputs": [],
+      "outputs": [
+        {
+          "port": "text",
+          "type": "text",
+          "carries": "铁律文本",
+          "inject": "system",
+          "to": [
+            {
+              "node": "n_pick",
+              "port": "rules"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "seq": 10,
+      "id": "n_note4",
+      "type": "note",
+      "label": "博士意见（半自动模式才用）",
+      "does": "半自动模式下由博士填写的修改/确认意见；自动模式留空即可",
+      "text": "（半自动模式：在此写入博士对推荐方案的修改或确认；自动模式保持空白）",
+      "inputs": [],
+      "outputs": [
+        {
+          "port": "text",
+          "type": "text",
+          "carries": "博士意见",
+          "inject": "user_prefix",
+          "to": [
+            {
+              "node": "n_pick",
+              "port": "extra"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "seq": 11,
+      "id": "n_s2",
+      "type": "model_call",
+      "label": "S2 求解",
+      "does": "按定稿逐问写求解器；所有数字进 registry；SHA 防漂移",
+      "note": "定稿即法律：此节点任何偏离定稿的做法都应作废重做",
+      "inputs": [
+        {
+          "port": "design",
+          "type": "json",
+          "carries": "《设计方案定稿》",
+          "from": [
+            {
+              "node": "n_pick",
+              "port": "final"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "numbers",
+          "type": "json",
+          "carries": "数字 registry + 求解脚本",
+          "to": [
+            {
+              "node": "n_s3",
+              "port": "numbers"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "deepseek",
+          "model": "deepseek-v4-flash"
+        },
+        "prompt": {
+          "template": "严格按《设计方案定稿》逐问实现求解器。要求：\n1) 所有数字写入 registry，并记录产出脚本\n2) 每个数字计算 SHA-512\n3) 不得偏离定稿自创方法或参数\n\n【定稿】\n{{ input.design }}",
+          "variables": [],
+          "system": ""
+        },
+        "params": {}
+      }
+    },
+    {
+      "seq": 12,
+      "id": "n_s3",
+      "type": "model_call",
+      "label": "S3 数值门禁",
+      "does": "确定性代码：重跑 SHA 全等 + 预测量级一致性 + 基准并置",
+      "note": "这是确定性代码，不是 LLM 判断 —— 数值不过关就不能往下走",
+      "inputs": [
+        {
+          "port": "numbers",
+          "type": "json",
+          "carries": "数字 registry",
+          "from": [
+            {
+              "node": "n_s2",
+              "port": "numbers"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "checked",
+          "type": "json",
+          "carries": "门禁报告 + 校验过的 registry",
+          "to": [
+            {
+              "node": "n_s4",
+              "port": "registry"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "deepseek",
+          "model": "deepseek-v4-flash"
+        },
+        "prompt": {
+          "template": "对 registry 里的每个数字执行确定性门禁：\n1) 重跑脚本 → SHA-512 必须全等\n2) 预测量级一致性检查\n3) 与基准方法并置对比\n输出通过/失败清单。\n\n{{ input.numbers }}",
+          "variables": [],
+          "system": ""
+        },
+        "params": {}
+      }
+    },
+    {
+      "seq": 13,
+      "id": "n_s4",
+      "type": "model_call",
+      "label": "S4 装配写作",
+      "does": "模板 + 定稿 + 注册表 → 装配论文；writer 只做语言组织，禁止生成数字/文献/声明",
+      "note": "v5.1 教训：writer 自由扩写导致新旧值拼贴（−843.92/−675.54）、章节错乱、文献幻觉。v5.2 改成装配式。",
+      "inputs": [
+        {
+          "port": "design",
+          "type": "json",
+          "carries": "《设计方案定稿》",
+          "from": [
+            {
+              "node": "n_pick",
+              "port": "final"
+            }
+          ]
+        },
+        {
+          "port": "registry",
+          "type": "json",
+          "carries": "门禁通过的数字 registry",
+          "from": [
+            {
+              "node": "n_s3",
+              "port": "checked"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "paper",
+          "type": "text",
+          "carries": "论文正文（待评审）",
+          "to": [
+            {
+              "node": "n_s5a",
+              "port": "paper"
+            },
+            {
+              "node": "n_s5b",
+              "port": "paper"
+            },
+            {
+              "node": "n_s5c",
+              "port": "paper"
+            },
+            {
+              "node": "n_s5d",
+              "port": "paper"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "deepseek",
+          "model": "deepseek-v4-flash"
+        },
+        "prompt": {
+          "template": "按官方论文模板装配正文。严格约束：\n1) 所有数字只从 registry 注入，禁止自己生成任何数字\n2) 参考文献只用白名单内的\n3) AI 使用声明由 manifest 自动生成\n4) 剥除所有 [Cxxx] 内部标签\n你只负责语言组织与章节装配。\n\n【定稿】{{ input.design }}\n\n【registry】{{ input.registry }}",
+          "variables": [],
+          "system": ""
+        },
+        "params": {}
+      }
+    },
+    {
+      "seq": 14,
+      "id": "n_s5a",
+      "type": "model_call",
+      "label": "S5 评审 · GLM",
+      "does": "全权评审：零上下文隔离、先验证后评分、扣分记录制",
+      "note": "零上下文隔离：评审实例不带写作阶段的任何历史",
+      "inputs": [
+        {
+          "port": "paper",
+          "type": "text",
+          "carries": "论文正文",
+          "from": [
+            {
+              "node": "n_s4",
+              "port": "paper"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "review",
+          "type": "json",
+          "carries": "评审报告（总分 + 扣分明细）",
+          "to": [
+            {
+              "node": "n_s6",
+              "port": "reviews"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "glm",
+          "model": "glm-5.3"
+        },
+        "prompt": {
+          "template": "对下面这篇竞赛论文做评审（v2.8 标准）：\n1) **先验证后评分**：先核查关键数字与推导，再打分\n2) 扣分记录制：每处扣分写明位置与理由\n3) 输出：总分 + 各维度得分 + 扣分明细\n\n【论文】\n{{ input.paper }}",
+          "variables": [],
+          "system": ""
+        },
+        "params": {}
+      }
+    },
+    {
+      "seq": 15,
+      "id": "n_s5b",
+      "type": "model_call",
+      "label": "S5 评审 · Kimi",
+      "does": "全权评审：零上下文隔离、先验证后评分、扣分记录制",
+      "note": "零上下文隔离：评审实例不带写作阶段的任何历史",
+      "inputs": [
+        {
+          "port": "paper",
+          "type": "text",
+          "carries": "论文正文",
+          "from": [
+            {
+              "node": "n_s4",
+              "port": "paper"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "review",
+          "type": "json",
+          "carries": "评审报告（总分 + 扣分明细）",
+          "to": [
+            {
+              "node": "n_s6",
+              "port": "reviews"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "kimi",
+          "model": "kimi-k2"
+        },
+        "prompt": {
+          "template": "对下面这篇竞赛论文做评审（v2.8 标准）：\n1) **先验证后评分**：先核查关键数字与推导，再打分\n2) 扣分记录制：每处扣分写明位置与理由\n3) 输出：总分 + 各维度得分 + 扣分明细\n\n【论文】\n{{ input.paper }}",
+          "variables": [],
+          "system": ""
+        },
+        "params": {}
+      }
+    },
+    {
+      "seq": 16,
+      "id": "n_s5c",
+      "type": "model_call",
+      "label": "S5 评审 · DeepSeek（新开）",
+      "does": "全权评审：零上下文隔离、先验证后评分、扣分记录制",
+      "note": "零上下文隔离：评审实例不带写作阶段的任何历史",
+      "inputs": [
+        {
+          "port": "paper",
+          "type": "text",
+          "carries": "论文正文",
+          "from": [
+            {
+              "node": "n_s4",
+              "port": "paper"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "review",
+          "type": "json",
+          "carries": "评审报告（总分 + 扣分明细）",
+          "to": [
+            {
+              "node": "n_s6",
+              "port": "reviews"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "deepseek",
+          "model": "deepseek-v4-flash"
+        },
+        "prompt": {
+          "template": "对下面这篇竞赛论文做评审（v2.8 标准）：\n1) **先验证后评分**：先核查关键数字与推导，再打分\n2) 扣分记录制：每处扣分写明位置与理由\n3) 输出：总分 + 各维度得分 + 扣分明细\n\n【论文】\n{{ input.paper }}",
+          "variables": [],
+          "system": ""
+        },
+        "params": {}
+      }
+    },
+    {
+      "seq": 17,
+      "id": "n_s5d",
+      "type": "model_call",
+      "label": "S5 评审 · Qwen 影子校准",
+      "does": "影子校准：不参与打分，只在阶梯上做交叉校准（可缺）",
+      "note": "required=false：影子校准是增强项，缺了照跑",
+      "inputs": [
+        {
+          "port": "paper",
+          "type": "text",
+          "carries": "论文正文",
+          "from": [
+            {
+              "node": "n_s4",
+              "port": "paper"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "review",
+          "type": "json",
+          "carries": "评审报告（总分 + 扣分明细）",
+          "to": [
+            {
+              "node": "n_s6",
+              "port": "shadow"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "qwen",
+          "model": "qwen3-235b"
+        },
+        "prompt": {
+          "template": "对下面这篇竞赛论文做评审（v2.8 标准）：\n1) **先验证后评分**：先核查关键数字与推导，再打分\n2) 扣分记录制：每处扣分写明位置与理由\n3) 输出：总分 + 各维度得分 + 扣分明细\n\n【论文】\n{{ input.paper }}",
+          "variables": [],
+          "system": ""
+        },
+        "params": {}
+      }
+    },
+    {
+      "seq": 19,
+      "id": "n_note2",
+      "type": "note",
+      "label": "关于修复回路",
+      "does": "解释 S6 为什么是回路、以及什么情况必须回灌重算（挂靠展示，不注入）",
+      "text": "S6 评审修订单分两类：① 易修复项 → 走确定性 repair 节点就地修；② 需重算项 → 回灌 S2 触发 freshness 全链作废重算，再走 S3→S4→S5，直到收敛。\n注意：这是**回路**，本格式目前只画成单向（DAG）。",
+      "inputs": [],
+      "outputs": [],
+      "attached_to": [
+        {
+          "node": "n_s6"
+        }
+      ]
+    },
+    {
+      "seq": 18,
+      "id": "n_s6",
+      "type": "model_call",
+      "label": "S6 修复回路",
+      "does": "按评审修订单修复：易修复项就地 repair，需重算项回灌 S2；然后回到评审，直到收敛",
+      "note": "mode=all：三份全权评审都到齐才开工；shadow 是增强项（required=false）",
+      "annotations": [
+        "n_note2"
+      ],
+      "inputs": [
+        {
+          "port": "reviews",
+          "type": "json",
+          "carries": "三份全权评审报告",
+          "mode": "all",
+          "from": [
+            {
+              "node": "n_s5a",
+              "port": "review"
+            },
+            {
+              "node": "n_s5b",
+              "port": "review"
+            },
+            {
+              "node": "n_s5c",
+              "port": "review"
+            }
+          ]
+        },
+        {
+          "port": "shadow",
+          "type": "json",
+          "carries": "Qwen 影子校准意见",
+          "required": false,
+          "from": [
+            {
+              "node": "n_s5d",
+              "port": "review"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "fixed",
+          "type": "text",
+          "carries": "修复后的论文",
+          "to": [
+            {
+              "node": "n_s7",
+              "port": "paper"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "deepseek",
+          "model": "deepseek-v4-flash"
+        },
+        "prompt": {
+          "template": "根据三份全权评审的修订单执行修复：\n1) 分类：易修复项（文字/格式/引用）vs 需重算项（数字/模型）\n2) 易修复项直接改\n3) 需重算项标记 freshness，回灌 S2 全链作废重算\n4) 输出修订单执行报告\n\n【评审报告】{{ input.reviews }}",
+          "variables": [],
+          "system": ""
+        },
+        "params": {}
+      }
+    },
+    {
+      "seq": 20,
+      "id": "n_s7",
+      "type": "model_call",
+      "label": "S7 分数回归门",
+      "does": "最终出口门禁：v2.8 评审分 ≥ 上一版基线，否则产物不出管线",
+      "note": "这是最终出口 —— 不过这道门，产物不出管线",
+      "annotations": [
+        "n_note3"
+      ],
+      "inputs": [
+        {
+          "port": "paper",
+          "type": "text",
+          "carries": "修复后的论文",
+          "from": [
+            {
+              "node": "n_s6",
+              "port": "fixed"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "passed",
+          "type": "text",
+          "carries": "过门的论文",
+          "to": [
+            {
+              "node": "n_out",
+              "port": "content"
+            }
+          ]
+        }
+      ],
+      "config": {
+        "provider": {
+          "id": "deepseek",
+          "model": "deepseek-v4-flash"
+        },
+        "prompt": {
+          "template": "执行产物分数回归门：\n1) 取本版产物 v2.8 仲裁分\n2) 与基线对比（华数杯 C = 50；美赛 = 78）\n3) 分数 < 基线 → **阻断交付**，输出退化诊断（哪几维掉分、对应哪些改动）\n4) 分数 ≥ 基线 → 放行\n\n【修复后论文】{{ input.paper }}",
+          "variables": [],
+          "system": ""
+        },
+        "params": {}
+      }
+    },
+    {
+      "seq": 22,
+      "id": "n_note3",
+      "type": "note",
+      "label": "回归门为什么必须有",
+      "does": "说明 S7 的存在理由（挂靠展示）",
+      "text": "v5.1 的致命教训：验收测的是「评审能不能找到错」，而不是「产物烂不烂」—— 结果产物 47/100 也能出厂。\nS7 把**产物分数本身**变成门禁：不过基线，不出管线。",
+      "inputs": [],
+      "outputs": [],
+      "attached_to": [
+        {
+          "node": "n_s7"
+        }
+      ]
+    },
+    {
+      "seq": 21,
+      "id": "n_out",
+      "type": "output",
+      "label": "交付论文",
+      "does": "把过门的论文与配套材料落盘（PDF + 源码 + registry + AI 使用声明）",
+      "inputs": [
+        {
+          "port": "content",
+          "type": "text",
+          "carries": "过门的论文",
+          "from": [
+            {
+              "node": "n_s7",
+              "port": "passed"
+            }
+          ]
+        }
+      ],
+      "outputs": []
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "id": "mathmodel-pipeline",
+  "category": "科研与数据分析",
+  "tags": ["数学建模", "多模型分工", "单一拍板者", "数值门禁", "产物回归门", "MCM"],
+  "status": "published",
+  "featured": true,
+  "order": 20,
+  "cover": null,
+  "notes": "V5.2 定稿版本（2026-08-15）。四模型参谋只交候选+分歧 → 单一拍板者定稿 → 求解进 registry → 数值门禁 → 装配写作 → 四评 → 修复回路 → 分数回归门。"
+}

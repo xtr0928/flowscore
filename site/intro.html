@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>简介 · 流谱 FlowScore</title>
+<link rel="icon" href="data:,">
+<style>*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --paper:#f5f4ed; --ivory:#faf9f5; --ink:#141413; --ink2:#5e5d59; --ink3:#87867f;
+  --rule:#e8e6dc; --rule-soft:#f0eee6;
+  --terra:#c96442; --coral:#d97757; --sand:#e8e6dc;
+  --dark:#141413; --dark2:#30302e; --silver:#b0aea5;
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC","STSong",Georgia,"SimSun",serif;
+  --sans:"Noto Sans SC","Source Han Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",-apple-system,sans-serif;
+  --mono:"JetBrains Mono","SF Mono","Menlo","Consolas",monospace;
+}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15.5px;line-height:1.9;-webkit-font-smoothing:antialiased;padding-left:190px}
+a{color:inherit;text-decoration:none}
+
+#top{position:sticky;top:0;z-index:100;background:rgba(245,244,237,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--rule-soft)}
+#top-in{max-width:920px;margin:0 auto;padding:16px 32px 13px}
+#brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+#brand h1{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:.5px}
+
+/* ── 侧边栏（v34 同款） ── */
+#side{position:fixed;left:0;top:0;bottom:0;width:190px;z-index:110;background:var(--paper);border-right:1px solid var(--rule-soft);padding:20px 16px;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+.gen-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 14px;
+  background:var(--terra);color:var(--ivory);border-radius:8px;font-size:13.5px;font-weight:600;
+  white-space:nowrap;flex-shrink:0;transition:.18s;letter-spacing:.5px;
+  box-shadow:0 2px 10px rgba(201,100,66,.24)}
+.gen-btn:hover{background:#b45a3c;transform:translateY(-1px);box-shadow:0 4px 16px rgba(201,100,66,.32)}
+#side-toggle{align-self:flex-end;width:32px;height:26px;display:flex;align-items:center;justify-content:center;background:var(--ivory);border:1px solid var(--rule);border-radius:8px;cursor:pointer;color:var(--ink3);font-size:14px;line-height:1;transition:.15s;flex-shrink:0;font-family:var(--mono);padding:0}
+#side-toggle:hover{border-color:var(--ink3);color:var(--ink)}
+body.side-collapsed{padding-left:54px}
+body.side-collapsed #side{width:54px;padding:20px 8px}
+body.side-collapsed .lbl{display:none}
+body.side-collapsed #side-toggle{align-self:center}
+body.side-collapsed .gen-btn,body.side-collapsed .side-link{justify-content:center;padding-left:6px;padding-right:6px}
+.side-sep{height:1px;background:var(--rule-soft);margin:4px 0}
+.side-nav{display:flex;flex-direction:column;gap:2px}
+.side-link{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;font-size:13.5px;color:var(--ink2);transition:.15s}
+.side-link:hover{background:rgba(201,100,66,.08);color:var(--ink)}
+.side-link.on{background:rgba(201,100,66,.1);color:var(--terra);font-weight:600}
+
+/* ── 文档页 ── */
+.doc{max-width:920px;margin:0 auto;padding:40px 32px 96px}
+.hero{padding:26px 0 8px;border-bottom:1px solid var(--rule-soft)}
+.overline{font-family:var(--mono);font-size:10.5px;letter-spacing:2.6px;color:var(--terra);font-weight:600;margin-bottom:16px}
+.hero h2{font-family:var(--serif);font-size:40px;font-weight:600;letter-spacing:1px;line-height:1.25;margin-bottom:14px}
+.hero .lead{font-family:var(--serif);font-size:17.5px;line-height:2.05;color:var(--ink2);max-width:720px}
+#stat-band{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:30px 0 8px}
+.stat{background:var(--ivory);border:1px solid var(--rule-soft);border-radius:12px;padding:16px 18px;box-shadow:rgba(20,20,19,.03) 0 4px 18px}
+.stat .n{font-family:var(--serif);font-size:26px;font-weight:600;letter-spacing:.5px;line-height:1.2}
+.stat .l{font-size:12px;color:var(--ink3);margin-top:4px;letter-spacing:.4px}
+
+.sec{margin-top:58px;padding-top:30px;border-top:1px solid var(--rule-soft)}
+.sec > h2{font-family:var(--serif);font-size:24px;font-weight:600;letter-spacing:.5px;margin-bottom:16px;display:flex;align-items:baseline;gap:12px}
+.sec > h2 .no{font-family:var(--mono);font-size:12px;color:var(--terra);letter-spacing:2px;font-weight:600}
+.sec p{margin:12px 0;color:var(--ink2);line-height:1.95}
+.sec ul{margin:12px 0 12px 0;list-style:none;color:var(--ink2)}
+.sec ul li{padding-left:22px;position:relative;margin:9px 0;line-height:1.9}
+.sec ul li::before{content:"—";position:absolute;left:0;color:var(--terra);font-family:var(--mono);font-size:12px;top:4px}
+code{font-family:var(--mono);font-size:12.5px;background:#eeebe1;padding:2px 7px;border-radius:6px;color:#8a4a30}
+a.ln{color:var(--terra);border-bottom:1px solid rgba(201,100,66,.3);transition:.15s}
+a.ln:hover{border-color:var(--terra)}
+.note{background:#fbf3ea;border:1px solid #f0e0d2;border-left:3px solid var(--terra);border-radius:10px;padding:14px 18px;margin:20px 0;font-size:13.5px;color:#6b5a4e;line-height:1.85}
+
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.fcard{background:var(--ivory);border:1px solid var(--rule-soft);border-radius:12px;padding:18px 20px;transition:.18s;box-shadow:rgba(20,20,19,.025) 0 3px 14px}
+.fcard:hover{border-color:var(--rule);transform:translateY(-1px);box-shadow:rgba(20,20,19,.05) 0 6px 22px}
+.fcard .ft{display:flex;align-items:baseline;gap:9px;margin-bottom:7px}
+.fcard .no{font-family:var(--mono);font-size:11px;color:var(--terra);letter-spacing:1.5px;font-weight:600}
+.fcard .tt{font-family:var(--serif);font-size:16.5px;font-weight:600}
+.fcard .fd{font-size:13.5px;color:var(--ink2);line-height:1.85}
+
+/* ── 深色章节：Agent 接口 ── */
+.dark-sec{background:var(--dark);border-radius:16px;padding:34px 36px 30px;margin-top:58px;color:var(--silver);box-shadow:rgba(20,20,19,.16) 0 14px 44px}
+.dark-sec h2{font-family:var(--serif);font-size:24px;font-weight:600;letter-spacing:.5px;color:var(--ivory);display:flex;align-items:baseline;gap:12px;margin-bottom:8px}
+.dark-sec h2 .no{font-family:var(--mono);font-size:12px;color:var(--coral);letter-spacing:2px}
+.dark-sec p{color:var(--silver);line-height:1.95;margin:12px 0}
+.dark-sec ul{list-style:none;margin:16px 0}
+.dark-sec li{padding:9px 0;border-bottom:1px solid #262624;display:flex;gap:14px;align-items:baseline;flex-wrap:wrap}
+.dark-sec li:last-child{border-bottom:0}
+.dark-sec code{background:var(--dark2);color:var(--coral);border:1px solid #3a3a37;padding:3px 9px;border-radius:7px;font-size:12.5px}
+.dark-sec .desc{font-size:13.5px;color:#9b988f;flex:1;min-width:220px}
+.dark-sec a.ln{color:var(--coral);border-bottom:1px solid rgba(217,119,87,.35)}
+.dark-sec a.ln:hover{border-color:var(--coral)}
+
+footer{max-width:920px;margin:0 auto;padding:26px 32px 48px;font-family:var(--mono);font-size:11px;color:var(--ink3);display:flex;gap:16px;flex-wrap:wrap}
+footer a{color:var(--terra)}
+
+@media(max-width:900px){#stat-band{grid-template-columns:repeat(2,1fr)}.fgrid{grid-template-columns:1fr}}
+@media(max-width:640px){#top-in,.doc,footer{padding-left:16px;padding-right:16px}.hero h2{font-size:30px}.dark-sec{padding:24px 20px}}
+@media(max-width:820px){
+  body{padding-left:0}#side-toggle{display:none}
+  #side{position:static;width:auto;height:auto;bottom:auto;border-right:0;border-bottom:1px solid var(--rule-soft);padding:10px 16px;gap:8px;flex-direction:row;flex-wrap:wrap;align-items:center}
+  #side .gen-btn{width:auto}
+  .side-sep{display:none}
+  .side-nav{flex-direction:row;flex-wrap:wrap}
+  body.side-collapsed{padding-left:0}
+  body.side-collapsed #side{width:auto;padding:10px 16px}
+  body.side-collapsed .lbl{display:inline}
+}
+</style>
+</head>
+<body>
+<aside id="side">
+  <button id="side-toggle" title="收起侧边栏">«</button>
+  <a class="gen-btn" href="orchestrator/" target="_blank" rel="noopener"><span class="ic">▶</span><span class="lbl">工作流生成器</span></a>
+  <div class="side-sep"></div>
+  <nav class="side-nav">
+    <a class="side-link" href="./"><span class="ic">▤</span><span class="lbl">管线库</span></a>
+    <a class="side-link" href="others.html"><span class="ic">▦</span><span class="lbl">其他工作流</span></a>
+    <a class="side-link on" href="intro.html"><span class="ic">📖</span><span class="lbl">简介</span></a>
+    <a class="side-link" href="hot.html"><span class="ic">🔥</span><span class="lbl">热度榜</span></a>
+    <a class="side-link" href="agent.html" target="_blank" rel="noopener"><span class="ic">⚡</span><span class="lbl">agent 更快查找</span></a>
+    <a class="side-link" href="https://github.com/xtr0928/flowscore/issues/new?template=submit.yml" target="_blank" rel="noopener"><span class="ic">✍</span><span class="lbl">投稿</span></a>
+    <a class="side-link" href="community.html"><span class="ic">📬</span><span class="lbl">社区投稿</span></a>
+  </nav>
+  <div class="side-sep"></div>
+  <nav class="side-nav">
+    <a class="side-link" href="https://token8341.com/zh" target="_blank" rel="noopener" title="token8341 · 中转 API 八折"><span class="ic">🎫</span><span class="lbl">八折 Token</span></a>
+    <a class="side-link" href="https://github.com/xtr0928" target="_blank" rel="noopener" title="作者与赞助 · GitHub"><span class="ic">❤</span><span class="lbl">作者与赞助</span></a>
+  </nav>
+</aside>
+<header id="top"><div id="top-in"><div id="brand"><h1>流谱 · FlowScore</h1></div></div></header>
+
+<main class="doc">
+  <section class="hero">
+    <div class="overline">FLOWSCORE · 开源 AI 工作流精选</div>
+    <h2>从 GitHub 的汪洋里，<br>捞出能直接跑的工作流。</h2>
+    <p class="lead">不教提示词，不造轮子——给你现成的「谱子」，照着跑。每一条都经过部署实证核查，克隆下来就能动手。</p>
+    <div id="stat-band">
+      <div class="stat"><div class="n" id="n-total">…</div><div class="l">条可部署精选</div></div>
+      <div class="stat"><div class="n" id="n-all">…</div><div class="l">池内候选</div></div>
+      <div class="stat"><div class="n" id="n-high">…</div><div class="l">条高置信</div></div>
+      <div class="stat"><div class="n" id="n-o10">…</div><div class="l">条 10k+ ⭐</div></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2><span class="no">01</span>流谱是什么</h2>
+    <p>流谱把散落在 GitHub 里的可部署 AI 工作流筛出来、摆整齐：自动剪辑、批量文档、语音转写、数据采集、内容创作、科研计算……每一条都做过「部署实证」核查——仓库根目录确实存在能跑的入口（Dockerfile / docker-compose / package.json / requirements.txt / 一键脚本……），克隆下来即可使用。</p>
+    <p>判定与检索全部由服务器本地部署的模型完成——数据不出门、零云端费用。</p>
+  </section>
+
+  <section class="sec">
+    <h2><span class="no">02</span>数据是怎么筛出来的</h2>
+    <ul>
+      <li>多路扫描 GitHub 得到 <b>18,000+</b> 候选池（多组关键词 × 按星分层 × 多语言，逐项去重）</li>
+      <li><b>部署实证核查</b>：逐仓库实查根目录的部署入口，达标者进入主列表——「存在可跑入口」是硬门槛</li>
+      <li><b>本地模型批量打标</b>：用途分类 × 形态 × 部署方式 × 模型运行 × 使用方式 × 类别，共六组标签，支持多选叠加筛选</li>
+      <li>另每日记录星数快照，用于「热度榜」</li>
+    </ul>
+  </section>
+
+  <section class="sec">
+    <h2><span class="no">03</span>怎么用</h2>
+    <div class="fgrid">
+      <div class="fcard"><div class="ft"><span class="no">01</span><span class="tt">找 · 六面筛选</span></div><div class="fd">六组可折叠筛选项（用途分类置顶）：用途 × 形态 × 部署方式 × 模型运行 × 使用方式 × 类别，多选叠加、实时计数。</div></div>
+      <div class="fcard"><div class="ft"><span class="no">02</span><span class="tt">问 · 语义找</span></div><div class="fd">用大白话描述需求（如「把会议录音变成纪要」），点「✨ 语义找」，本地 Qwen 从全站挑最合适的几条。</div></div>
+      <div class="fcard"><div class="ft"><span class="no">03</span><span class="tt">抄 · agent 更快查找</span></div><div class="fd">侧边栏点「⚡ agent 更快查找」：输入一句话，直接列出项目地址清单——整段复制给任何 agent 就能开工。</div></div>
+      <div class="fcard"><div class="ft"><span class="no">04</span><span class="tt">看 · 卡片直达</span></div><div class="fd">每张卡片标注星数、语言、部署方式、中英文简介与置信度；点「GitHub ↗」直达仓库。</div></div>
+      <div class="fcard"><div class="ft"><span class="no">05</span><span class="tt">排 · 热度榜</span></div><div class="fd">把「最近涨星最快」的工作流拎出来，热度数据每天记录。</div></div>
+      <div class="fcard"><div class="ft"><span class="no">06</span><span class="tt">造 · 工作流生成器</span></div><div class="fd">需要自己搭一条？打开画布拖拽编排节点（渠道 / 模型 / 提示词 / 输出格式），导出的配置交给任何 AI 助手即可落成可运行管线。</div></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2><span class="no">04</span>投稿你的工作流</h2>
+    <p>发现了好用的开源工作流，或者你自己写了一条？点侧边栏 <a class="ln" href="https://github.com/xtr0928/flowscore/issues/new?template=submit.yml">✍ 投稿</a>，填一下仓库链接即可。投稿会进入同一条筛选流水线：部署实证核查 → 本地模型判定 → 通过后出现在主列表与「社区投稿」栏目。</p>
+  </section>
+
+  <section class="dark-sec">
+    <h2><span class="no">05</span>给 AI 助手 / Agent 的接口</h2>
+    <p>整站开放只读接口，agent 可直接调用（说明见 <a class="ln" href="llms.txt">llms.txt</a>）：</p>
+    <ul>
+      <li><code>GET /api/search?q=需求</code><span class="desc">本地 Qwen 语义挑选，直接返回最合适的几条</span></li>
+      <li><code>GET /api/items</code><span class="desc">分页查询：关键词 / 六组筛选 / 排序</span></li>
+      <li><code>GET /api/facets</code><span class="desc">六组分面计数（留一法）</span></li>
+      <li><code>GET /api/stats</code><span class="desc">站点统计</span></li>
+    </ul>
+    <p>人用也不绕路：打开「⚡ agent 更快查找」，输入一句话，直接拿地址列表。</p>
+  </section>
+
+  <section class="sec">
+    <h2><span class="no">06</span>关于</h2>
+    <div class="note">「有部署实证」仅代表仓库根目录存在部署入口（如 Dockerfile），<b>不保证运行时无坑</b>；收录不改写，所有项目遵循其原始开源协议。</div>
+    <p>流谱是一个个人维护的精选索引站：只收录、不改写。判定与查询均由服务器本地模型完成。<br>
+    维护者：<a class="ln" href="https://github.com/xtr0928">xtr0928</a> · 反馈与投稿走 <a class="ln" href="https://github.com/xtr0928/flowscore/issues">GitHub Issues</a></p>
+  </section>
+</main>
+
+<footer>
+  <span>来源：GitHub 全量池 → 部署实证核查 → 本地精选</span>
+  <span><a href="llms.txt">Agent 接口</a></span>
+  <span><a href="https://github.com/xtr0928/flowscore">投稿仓库</a></span>
+</footer>
+
+<script>
+(function(){
+  var KEY='fs_side', b=document.body, t=document.getElementById('side-toggle');
+  try{ if(localStorage.getItem(KEY)==='1') b.classList.add('side-collapsed'); }catch(e){}
+  function sync(){
+    var c=b.classList.contains('side-collapsed');
+    t.textContent=c?'»':'«';
+    t.title=c?'展开侧边栏':'收起侧边栏';
+  }
+  t.addEventListener('click',function(){
+    b.classList.toggle('side-collapsed');
+    try{ localStorage.setItem(KEY, b.classList.contains('side-collapsed')?'1':'0'); }catch(e){}
+    sync();
+  });
+  sync();
+})();
+const BASE = '';
+fetch(BASE + '/api/stats', {cache:'no-cache'}).then(function(r){ return r.json(); }).then(function(s){
+  function N(n){ return Number(n||0).toLocaleString('en-US'); }
+  document.getElementById('n-total').textContent = N(s.total);
+  document.getElementById('n-all').textContent = N(s.total_all);
+  document.getElementById('n-high').textContent = N(s.high);
+  document.getElementById('n-o10').textContent = N(s.over10k);
+}).catch(function(){});
+</script>
+</body>
+</html>

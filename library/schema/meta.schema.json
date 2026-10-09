@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://flowscore.zufe.com.cn/schema/meta.schema.json",
+  "title": "管线目录元数据 meta.json",
+  "description": "本库对某条管线的目录登记信息。只放【站点概念】—— 管线的名字与一句话自述在 pipeline.flow.json 里，这里不重复（单一来源，杜绝漂移）。",
+  "type": "object",
+  "required": ["id", "category", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,39}$",
+      "description": "管线主键。必须 == 目录名 == pipeline.flow.json 的 identity.id。"
+    },
+    "category": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20,
+      "description": "分类。复用站点现有 10 类之一（如「编程开发」「内容创作」「数据分析」…）。"
+    },
+    "tags": {
+      "type": "array",
+      "maxItems": 8,
+      "items": { "type": "string", "minLength": 1, "maxLength": 16 },
+      "description": "标签，最多 8 个。"
+    },
+    "status": {
+      "enum": ["draft", "published", "archived"],
+      "description": "收录状态。只有 published 会进 registry.json。"
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false,
+      "description": "是否在首页置顶推荐。"
+    },
+    "order": {
+      "type": "integer",
+      "default": 100,
+      "description": "同分类内的排序权重，小的在前。"
+    },
+    "cover": {
+      "type": ["string", "null"],
+      "description": "封面图（相对本目录的路径）。没有就 null。"
+    },
+    "notes": {
+      "type": "string",
+      "description": "收录说明（可选，给维护者看，不上站点）。"
+    }
+  }
+}

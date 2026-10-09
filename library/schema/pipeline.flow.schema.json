@@ -1,0 +1,604 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://flowscore.zufe.com.cn/schema/pipeline.flow.schema.json",
+  "title": "流谱管线格式 pipeline.flow.json",
+  "description": "流谱平台的管线定义格式（节点中心）。每个节点自述完整契约：编号、输入来自哪里、输出给谁、用什么方式、这个节点要干什么。",
+  "type": "object",
+  "required": [
+    "format",
+    "format_version",
+    "identity",
+    "nodes"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "flowscore.pipeline",
+      "description": "格式标识常量。导入时据此识别本文件是流谱管线。"
+    },
+    "format_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "格式版本（语义化）。当前 2.1.0。"
+    },
+    "identity": {
+      "$ref": "#/$defs/identity"
+    },
+    "about": {
+      "$ref": "#/$defs/about"
+    },
+    "globals": {
+      "$ref": "#/$defs/globals"
+    },
+    "runtime": {
+      "$ref": "#/$defs/runtime"
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "description": "节点列表。每条连线在两端各声明一次（生产者写 to、消费者写 from），一致性由校验器保证。",
+      "items": {
+        "$ref": "#/$defs/node"
+      }
+    }
+  },
+  "$defs": {
+    "identity": {
+      "type": "object",
+      "description": "这份管线是谁。id 必须等于所在目录名。",
+      "required": [
+        "id",
+        "name",
+        "version"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{1,39}$",
+          "description": "管线主键。小写字母/数字/连字符，2-40 字符。一旦发布不可改（改名 = 新管线）。必须 == 目录名。"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60,
+          "description": "显示名称。"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "description": "版本号。MAJOR=破坏格式 / MINOR=加节点 / PATCH=改提示词（含接线型注释的正文）。"
+        },
+        "author": {
+          "type": "string",
+          "description": "作者。"
+        },
+        "license": {
+          "type": "string",
+          "description": "许可协议。"
+        },
+        "created": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "description": "创建日期 YYYY-MM-DD。"
+        },
+        "based_on": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "派生自哪份管线（id）。没有就 null。"
+        }
+      }
+    },
+    "about": {
+      "type": "object",
+      "description": "管线自述。summary 是站点卡片显示的那一句话 —— 只写在这里，meta.json 不重复。",
+      "required": [
+        "summary"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "summary": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 120,
+          "description": "一句话说清这份管线干什么（建议 ≤60 字）。"
+        },
+        "requires": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "运行前提。"
+        },
+        "produces": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "产出什么。"
+        }
+      }
+    },
+    "globals": {
+      "type": "object",
+      "description": "全局设置 + 全局提示词。全局提示词默认注入每一个 model_call 节点。",
+      "additionalProperties": false,
+      "properties": {
+        "settings": {
+          "type": "object",
+          "description": "全局设置，自由键值对。约定键（如 output_dir）会被引擎识别，其余透传给自定义工具。",
+          "additionalProperties": true
+        },
+        "prompts": {
+          "type": "array",
+          "description": "全局提示词列表。id 唯一，节点靠 id 排除。",
+          "items": {
+            "$ref": "#/$defs/global_prompt"
+          }
+        },
+        "apply_to": {
+          "oneOf": [
+            {
+              "const": "all"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            }
+          ],
+          "description": "\"all\"（默认）或指定节点 id 列表。"
+        }
+      }
+    },
+    "global_prompt": {
+      "type": "object",
+      "required": [
+        "id",
+        "as",
+        "text"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_][a-z0-9_-]{1,39}$",
+          "description": "唯一标识，节点靠它 exclude。"
+        },
+        "label": {
+          "type": "string",
+          "description": "给人看的名字。"
+        },
+        "as": {
+          "$ref": "#/$defs/inject"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "description": "提示词正文。"
+        }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "description": "全局运行策略。",
+      "additionalProperties": false,
+      "properties": {
+        "concurrency": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64,
+          "default": 1,
+          "description": "全局并发上限。"
+        },
+        "continue_on_error": {
+          "type": "boolean",
+          "default": false,
+          "description": "节点失败后：跳过继续跑，还是整条停。"
+        },
+        "timeout_sec": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 600,
+          "description": "单节点执行超时（秒）。"
+        }
+      }
+    },
+    "node_type": {
+      "enum": [
+        "input",
+        "model_call",
+        "output",
+        "note",
+        "task"
+      ],
+      "description": "input=入口 / model_call=干活 / output=出口 / note=注释（不执行）。"
+    },
+    "inject": {
+      "enum": [
+        "system",
+        "user_prefix",
+        "user_suffix"
+      ],
+      "description": "提示词注入位置：system 提示 / user 前部 / user 尾部。"
+    },
+    "join_mode": {
+      "enum": [
+        "all",
+        "any",
+        "first"
+      ],
+      "description": "端口内合并方式（仅当 from 有 ≥2 个来源时必填，单来源不得写）。all=都到齐 / any=任一即可 / first=只取最先到的。"
+    },
+    "edge_ref": {
+      "type": "object",
+      "description": "数据/提示词连线的目标：必须同时给出 node 与 port。",
+      "required": [
+        "node",
+        "port"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "node": {
+          "type": "string",
+          "description": "目标节点 id。"
+        },
+        "port": {
+          "type": "string",
+          "description": "目标节点上的端口名。"
+        },
+        "loop": {
+          "$ref": "#/$defs/loopSpec"
+        }
+      }
+    },
+    "attach_ref": {
+      "type": "object",
+      "description": "挂靠连线的目标：只写 node，不写 port（挂到该节点的「注释挂点」上，不注入）。",
+      "required": [
+        "node"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "node": {
+          "type": "string",
+          "description": "被挂靠的节点 id。"
+        }
+      }
+    },
+    "input_port": {
+      "type": "object",
+      "description": "输入端口。required 是端口级必填性；mode 是端口内合并方式（仅多来源时写）。",
+      "required": [
+        "port",
+        "from"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "port": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+          "description": "端口名，本节点内唯一。"
+        },
+        "type": {
+          "enum": [
+            "text",
+            "json",
+            "file",
+            "any"
+          ],
+          "description": "粗类型（不代表 payload 结构）。"
+        },
+        "carries": {
+          "type": "string",
+          "description": "这条边传的是什么数据（人话）。"
+        },
+        "required": {
+          "type": "boolean",
+          "default": true,
+          "description": "端口级必填性。true=必须到齐才触发（对注入端口则是「文本必须在位」，无等待语义）；false=可选，缺了照跑。"
+        },
+        "mode": {
+          "$ref": "#/$defs/join_mode"
+        },
+        "inject": {
+          "$ref": "#/$defs/inject"
+        },
+        "note": {
+          "type": "string",
+          "description": "这条边的设计意图。"
+        },
+        "from": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/edge_ref"
+          },
+          "description": "来源列表。"
+        }
+      }
+    },
+    "output_port": {
+      "type": "object",
+      "description": "输出端口。inject 只在输出到「提示词注入端口」时写，且必须与目标输入端口一致。",
+      "required": [
+        "port",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "port": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+          "description": "端口名，本节点内唯一。"
+        },
+        "type": {
+          "enum": [
+            "text",
+            "json",
+            "file",
+            "any"
+          ]
+        },
+        "carries": {
+          "type": "string"
+        },
+        "inject": {
+          "$ref": "#/$defs/inject"
+        },
+        "note": {
+          "type": "string"
+        },
+        "to": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/edge_ref"
+          },
+          "description": "目标列表。"
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "description": "一个节点。每个节点自述完整契约。",
+      "required": [
+        "seq",
+        "id",
+        "type",
+        "label",
+        "does",
+        "inputs",
+        "outputs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "节点编号（1 起连续）。给人和 AI 一个稳定的阅读顺序；与 id 的区别是它是「第几个」，可随增删调整。"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+          "description": "连线用的稳定标识（如 n_p4）。发布后不应改动。"
+        },
+        "type": {
+          "$ref": "#/$defs/node_type"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "短语名，画布上显示。"
+        },
+        "does": {
+          "type": "string",
+          "minLength": 2,
+          "description": "人话一句：这个节点要干什么。"
+        },
+        "note": {
+          "type": "string",
+          "description": "设计意图：为什么这么连 / 为什么这样设置。这是 JSON 里唯一能写「为什么」的地方。"
+        },
+        "annotations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "挂在本节点上的注释节点 id 列表（与注释的 attached_to 双向一致）。挂靠不注入、不参与调度。"
+        },
+        "attached_to": {
+          "type": "array",
+          "description": "【仅 note】挂靠到的节点列表。只写 node，不写 port。非空即「挂靠展示」；与 outputs 互不排斥。",
+          "items": {
+            "$ref": "#/$defs/attach_ref"
+          }
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "description": "【仅 note】注释正文 —— 要注入提示词或要展示给人类的内容。"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/input_port"
+          },
+          "description": "输入端口列表。入口节点（input）为 []。"
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/output_port"
+          },
+          "description": "输出端口列表。出口节点（output）为 []；note 非空即「接线注入」。"
+        },
+        "config": {
+          "type": "object",
+          "description": "该节点自己的配置（实现细节）。provider 调哪个模型 / prompt 提示词 / params 参数。",
+          "additionalProperties": true,
+          "properties": {
+            "provider": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "prompt": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "params": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "globals": {
+              "type": "object",
+              "description": "对全局提示词的选择。",
+              "additionalProperties": false,
+              "properties": {
+                "exclude": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "该节点不吃哪些全局提示词（写 globals.prompts[].id）。"
+                }
+              }
+            },
+            "write_to": {
+              "type": "string",
+              "description": "【output 节点】落盘路径。"
+            },
+            "format": {
+              "type": "string",
+              "description": "【output 节点】输出格式。"
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "note"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "text"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "input",
+                  "output"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "text"
+                  ]
+                },
+                {
+                  "required": [
+                    "attached_to"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "task"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "config": {
+                "$ref": "#/$defs/taskConfig"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "loopSpec": {
+      "type": "object",
+      "required": [
+        "kind",
+        "over"
+      ],
+      "additionalProperties": false,
+      "description": "回边标记：这条连线是循环（向后连），不是 DAG 正向流。校验器只放行「含至少一条 loop 边」的环。",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "foreach",
+            "while",
+            "retry"
+          ],
+          "description": "foreach=对集合迭代；while=条件循环；retry=重试"
+        },
+        "over": {
+          "type": "string",
+          "minLength": 2,
+          "description": "对什么迭代，如「S0 拆出的 N 个问题」"
+        },
+        "carries": {
+          "type": "string",
+          "description": "每次迭代携带什么，如「上一问的冻结件」"
+        },
+        "max_iter": {
+          "type": "string",
+          "description": "迭代上限 / 退出条件"
+        }
+      }
+    },
+    "taskConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "要执行的确定性命令或脚本路径（可选）"
+        },
+        "deterministic": {
+          "type": "boolean",
+          "description": "true = 同一输入必得同一输出（门禁/构建器/格式化应为 true）"
+        },
+        "timeout_sec": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

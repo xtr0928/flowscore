@@ -1,0 +1,217 @@
+{
+  "registry_version": "1.0.0",
+  "generated": "2026-10-09T20:28:33+08:00",
+  "count": 5,
+  "pipelines": [
+    {
+      "id": "coding-pipeline",
+      "name": "协同编码管线（执行段）",
+      "summary": "四模型分工：DS 编排 → GLM 设计 ∥ Qwen 视觉 → Kimi 编码 → 审查 → DS 集成",
+      "version": "1.0.0",
+      "author": "xtr0928",
+      "license": "MIT",
+      "created": "2026-10-09",
+      "category": "编程开发",
+      "tags": [
+        "多模型协同",
+        "代码生成",
+        "评审回路",
+        "四模型分工"
+      ],
+      "featured": true,
+      "order": 10,
+      "cover": null,
+      "stats": {
+        "nodes": 13,
+        "edges": 14,
+        "notes": 3,
+        "models": 4
+      },
+      "requires": [
+        "本地 LLM 端点（4 个模型）",
+        "可写工作目录"
+      ],
+      "produces": [
+        "代码文件",
+        "交付报告"
+      ],
+      "path": "pipelines/coding-pipeline/",
+      "flow": "pipelines/coding-pipeline/pipeline.flow.json",
+      "readme": "pipelines/coding-pipeline/README.md",
+      "updated": null
+    },
+    {
+      "id": "mathmodel-pipeline-v61",
+      "name": "数模管线 V6.1（逐问推进 + 反投毒摄入门禁）",
+      "summary": "反投毒摄入安检（S-1）→ 整题解析 → 逐问循环［交接包→独立推理→分歧→统一→求解→门禁→评审+评审长→修复→冻结］→ 终局跨问门禁/总评审/排版/检测/交付门禁/冻结",
+      "version": "6.1.0",
+      "author": "xtr0928",
+      "license": "MIT",
+      "created": "2026-09-25",
+      "category": "科研与数据分析",
+      "tags": [
+        "数学建模",
+        "逐问推进",
+        "反投毒",
+        "摄入门禁",
+        "多智能体",
+        "MCM",
+        "V6.1"
+      ],
+      "featured": true,
+      "order": 15,
+      "cover": null,
+      "stats": {
+        "nodes": 35,
+        "edges": 45,
+        "notes": 5,
+        "models": 4
+      },
+      "requires": [
+        "题目 PDF/数据集/图片",
+        "推理池 + 评审池 + 主模型（R5 开场点将）",
+        "官方论文模板",
+        "上一版基线分"
+      ],
+      "produces": [
+        "竞赛论文 PDF",
+        "求解源码",
+        "数字 registry（SHA-256）",
+        "AI 使用声明",
+        "反投毒报告"
+      ],
+      "path": "pipelines/mathmodel-pipeline-v61/",
+      "flow": "pipelines/mathmodel-pipeline-v61/pipeline.flow.json",
+      "readme": "pipelines/mathmodel-pipeline-v61/README.md",
+      "updated": null
+    },
+    {
+      "id": "mathmodel-pipeline",
+      "name": "数模管线 V5.2（参谋组 + 单一拍板者 + 产物回归门）",
+      "summary": "四模型参谋只交候选与分歧 → 单一拍板者定稿（定稿即法律）→ 求解进 registry → 数值门禁 → 装配写作 → 四评 → 修复回路 → 产物分数回归门",
+      "version": "5.2.0",
+      "author": "xtr0928",
+      "license": "MIT",
+      "created": "2026-08-15",
+      "category": "科研与数据分析",
+      "tags": [
+        "数学建模",
+        "多模型分工",
+        "单一拍板者",
+        "数值门禁",
+        "产物回归门",
+        "MCM"
+      ],
+      "featured": true,
+      "order": 20,
+      "cover": null,
+      "stats": {
+        "nodes": 22,
+        "edges": 27,
+        "notes": 4,
+        "models": 4
+      },
+      "requires": [
+        "四个模型端点（GLM / Kimi / DeepSeek / Qwen）",
+        "官方论文模板",
+        "上一版产物基线分"
+      ],
+      "produces": [
+        "竞赛论文 PDF",
+        "求解源码",
+        "数字 registry（含 SHA-512）",
+        "AI 使用声明"
+      ],
+      "path": "pipelines/mathmodel-pipeline/",
+      "flow": "pipelines/mathmodel-pipeline/pipeline.flow.json",
+      "readme": "pipelines/mathmodel-pipeline/README.md",
+      "updated": null
+    },
+    {
+      "id": "sample-article-summary",
+      "name": "文章摘要（最小示例）",
+      "summary": "读一篇文章，产出摘要与标题 —— 学习流谱格式的最小完整例子",
+      "version": "1.0.0",
+      "author": "xtr0928",
+      "license": "MIT",
+      "created": "2026-10-09",
+      "category": "内容创作",
+      "tags": [
+        "入门示例",
+        "文本摘要"
+      ],
+      "featured": false,
+      "order": 20,
+      "cover": null,
+      "stats": {
+        "nodes": 5,
+        "edges": 3,
+        "notes": 1,
+        "models": 1
+      },
+      "requires": [
+        "一个 LLM 端点"
+      ],
+      "produces": [
+        "Markdown 摘要"
+      ],
+      "path": "pipelines/sample-article-summary/",
+      "flow": "pipelines/sample-article-summary/pipeline.flow.json",
+      "readme": "pipelines/sample-article-summary/README.md",
+      "updated": null
+    },
+    {
+      "id": "sample-dual-source-qa",
+      "name": "双源问答 + 事实核对",
+      "summary": "拿「问题 + 参考文档」起草回答，再独立核对事实后定稿 —— 展示汇合语义与注释注入",
+      "version": "1.0.0",
+      "author": "xtr0928",
+      "license": "MIT",
+      "created": "2026-10-09",
+      "category": "数据分析",
+      "tags": [
+        "示例",
+        "事实核对",
+        "汇合语义"
+      ],
+      "featured": false,
+      "order": 30,
+      "cover": null,
+      "stats": {
+        "nodes": 8,
+        "edges": 7,
+        "notes": 2,
+        "models": 2
+      },
+      "requires": [
+        "一个 LLM 端点（或两个）"
+      ],
+      "produces": [
+        "带出处标注的回答"
+      ],
+      "path": "pipelines/sample-dual-source-qa/",
+      "flow": "pipelines/sample-dual-source-qa/pipeline.flow.json",
+      "readme": "pipelines/sample-dual-source-qa/README.md",
+      "updated": null
+    }
+  ],
+  "categories": [
+    {
+      "name": "内容创作",
+      "count": 1
+    },
+    {
+      "name": "数据分析",
+      "count": 1
+    },
+    {
+      "name": "科研与数据分析",
+      "count": 2
+    },
+    {
+      "name": "编程开发",
+      "count": 1
+    }
+  ],
+  "skipped": []
+}

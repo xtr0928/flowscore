@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>热度榜 · 流谱 FlowScore</title>
+<link rel="icon" href="data:,">
+<style>*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --paper:#faf8f3; --ink:#1c1a16; --ink-2:#4a453d; --ink-3:#8a8377;
+  --rule:#e2ddd2; --card:#ffffff; --accent:#a63a2a; --accent-soft:#f3e7e3;
+  --green:#3f7a4d; --amber:#a8761f; --gray:#9a938a;
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC","STSong","SimSun",serif;
+  --sans:"Noto Sans SC","Source Han Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",-apple-system,sans-serif;
+  --mono:"JetBrains Mono","SF Mono","Menlo","Consolas",monospace;
+}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;padding-left:190px}
+a{color:inherit;text-decoration:none}
+
+#top{position:sticky;top:0;z-index:100;background:rgba(250,248,243,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--rule)}
+#top-in{max-width:1400px;margin:0 auto;padding:18px 28px 14px}
+#brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+#brand h1{font-family:var(--serif);font-size:23px;font-weight:700;letter-spacing:.5px}
+#brand .sub{font-family:var(--mono);font-size:11px;color:var(--ink-3);letter-spacing:1.5px}
+#brand .stats{margin-left:auto;display:flex;gap:18px;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+#brand .stats b{color:var(--accent);font-weight:600}
+#controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+#q{flex:1;min-width:220px;padding:9px 14px;font-size:13.5px;font-family:var(--sans);border:1px solid var(--rule);border-radius:3px;background:var(--card);color:var(--ink);outline:none}
+#q:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+select{padding:9px 12px;font-size:13px;font-family:var(--sans);border:1px solid var(--rule);border-radius:3px;background:var(--card);color:var(--ink);outline:none;cursor:pointer}
+select:focus{border-color:var(--accent)}
+#cats{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+.cat{font-size:12.5px;padding:4px 11px;border:1px solid var(--rule);border-radius:100px;background:transparent;color:var(--ink-2);cursor:pointer;transition:.16s;font-family:var(--sans)}
+.cat:hover{border-color:var(--ink-3);color:var(--ink)}
+.cat.on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.cat .cnt{font-family:var(--mono);font-size:10.5px;opacity:.6;margin-left:4px}
+
+#wrap{max-width:1400px;margin:0 auto;padding:22px 28px 80px}
+#meta{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-bottom:14px}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:4px;padding:15px 16px 13px;display:flex;flex-direction:column;gap:9px;transition:.18s;position:relative;overflow:hidden}
+.card:hover{border-color:var(--ink-3);box-shadow:0 2px 12px rgba(28,26,22,.07);transform:translateY(-1px)}
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:transparent;transition:.18s}
+.card[data-k="high"]::before{background:var(--green)}
+.card[data-k="medium"]::before{background:var(--amber)}
+.card[data-k="low"]::before{background:var(--gray)}
+.c-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.c-name{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--ink);word-break:break-all;line-height:1.35}
+.c-name span{color:var(--ink-3);font-weight:400}
+.c-type{font-size:10.5px;padding:2px 8px;background:var(--accent-soft);color:var(--accent);border-radius:2px;white-space:nowrap}
+.c-desc{font-size:13.2px;color:var(--ink);line-height:1.62;text-wrap:pretty}
+.c-en{font-size:11.5px;color:var(--ink-3);line-height:1.5;font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.c-foot{margin-top:auto;padding-top:9px;border-top:1px solid var(--rule);display:flex;align-items:center;gap:11px;font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.c-star{color:var(--accent);font-weight:600}
+.c-conf{padding:1px 6px;border-radius:2px;font-size:10px}
+.c-conf[data-k="high"]{background:#e8f2ea;color:var(--green)}
+.c-conf[data-k="medium"]{background:#faf1de;color:var(--amber)}
+.c-conf[data-k="low"]{background:#f0eeea;color:var(--gray)}
+.c-go{margin-left:auto;color:var(--accent);font-weight:600;font-size:11.5px;transition:.15s;white-space:nowrap}
+.card:hover .c-go{letter-spacing:.4px}
+#more{text-align:center;padding:30px 0;font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+#sentinel{height:1px}
+.empty{text-align:center;padding:80px 20px;color:var(--ink-3);font-family:var(--mono);font-size:13px}
+
+#hot-sec{margin-bottom:22px}
+.hot-label{font-family:var(--mono);font-size:10.5px;letter-spacing:2px;color:var(--accent);margin-bottom:9px;font-weight:600}
+.hot-card{display:block;background:linear-gradient(135deg,#fdf8f5 0%,#faf2ee 100%);border:1px solid #e9d6d0;border-left:4px solid var(--accent);border-radius:5px;padding:17px 20px 16px;transition:.2s}
+.hot-card:hover{border-color:var(--accent);box-shadow:0 3px 18px rgba(166,58,42,.13);transform:translateY(-1px)}
+.hot-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:9px}
+.hot-name{font-family:var(--mono);font-size:14.5px;font-weight:700;color:var(--ink);word-break:break-all}
+.hot-name span{color:var(--ink-3);font-weight:400}
+.hot-go{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--accent);font-weight:600;white-space:nowrap}
+.hot-desc{font-size:13.6px;color:var(--ink-2);line-height:1.72;margin-bottom:12px}
+.hot-tags{display:flex;gap:7px;flex-wrap:wrap}
+.hot-tags span{font-size:11px;padding:3px 9px;background:#fff;border:1px solid #e9d6d0;color:var(--accent);border-radius:2px;white-space:nowrap}
+footer{max-width:1400px;margin:0 auto;padding:26px 28px 40px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:11px;color:var(--ink-3);display:flex;gap:16px;flex-wrap:wrap}
+
+/* ── 侧边栏 ── */
+#side{position:fixed;left:0;top:0;bottom:0;width:190px;z-index:110;background:var(--paper);border-right:1px solid var(--rule);padding:20px 16px;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+.gen-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 14px;
+  background:var(--accent);color:#fff;border-radius:3px;font-size:13.5px;font-weight:600;
+  white-space:nowrap;flex-shrink:0;transition:.18s;
+  box-shadow:0 2px 8px rgba(166,58,42,.22);letter-spacing:.5px}
+.gen-btn:hover{background:#8f3226;transform:translateY(-1px);box-shadow:0 4px 14px rgba(166,58,42,.32)}
+.gen-btn:active{transform:translateY(0)}
+#side-toggle{align-self:flex-end;width:32px;height:26px;display:flex;align-items:center;justify-content:center;background:var(--card);border:1px solid var(--rule);border-radius:4px;cursor:pointer;color:var(--ink-3);font-size:14px;line-height:1;transition:.15s;flex-shrink:0;font-family:var(--mono);padding:0}
+#side-toggle:hover{border-color:var(--ink-3);color:var(--ink)}
+body.side-collapsed{padding-left:54px}
+body.side-collapsed #side{width:54px;padding:20px 8px}
+body.side-collapsed .lbl{display:none}
+body.side-collapsed #side-toggle{align-self:center}
+body.side-collapsed .gen-btn,body.side-collapsed .side-link{justify-content:center;padding-left:6px;padding-right:6px}
+.side-sep{height:1px;background:var(--rule);margin:4px 0}
+.side-nav{display:flex;flex-direction:column;gap:2px}
+.side-link{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:4px;font-size:13.5px;color:var(--ink-2);transition:.15s}
+.side-link:hover{background:var(--accent-soft);color:var(--ink)}
+.side-link.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+
+
+@media(max-width:640px){#top-in,#wrap{padding-left:16px;padding-right:16px}#brand .stats{display:none}#grid{grid-template-columns:1fr}.gen-btn{padding:8px 13px;font-size:12.5px}}
+@media(max-width:820px){
+  body{padding-left:0}#side-toggle{display:none}
+  #side{position:static;width:auto;height:auto;bottom:auto;border-right:0;border-bottom:1px solid var(--rule);padding:10px 16px;gap:8px;flex-direction:row;flex-wrap:wrap;align-items:center}
+  #side .gen-btn{width:auto}
+  .side-sep{display:none}
+  .side-nav{flex-direction:row;flex-wrap:wrap}
+  body.side-collapsed{padding-left:0}
+  body.side-collapsed #side{width:auto;padding:10px 16px}
+  body.side-collapsed .lbl{display:inline}
+}
+
+/* ── 简介 / 热度榜页 ── */
+.doc{max-width:860px;margin:0 auto;padding:34px 28px 80px}
+.doc h2{font-family:var(--serif);font-size:22px;margin:30px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--rule)}
+.doc h2:first-child{margin-top:0}
+.doc p{margin:10px 0;color:var(--ink-2);line-height:1.85}
+.doc ul{margin:10px 0 10px 22px;color:var(--ink-2);line-height:1.9}
+.doc code{font-family:var(--mono);font-size:12.5px;background:#f0ede6;padding:1px 6px;border-radius:2px;color:var(--accent)}
+.doc a.ln{color:var(--accent);border-bottom:1px solid var(--accent-soft)}
+.doc a.ln:hover{border-color:var(--accent)}
+.lead{font-size:15px;color:var(--ink)!important}
+.note{background:#fdf9f0;border:1px solid #ecd9b0;border-left:3px solid var(--amber);border-radius:4px;padding:12px 16px;margin:16px 0;font-size:13px;color:var(--ink-2)}
+.rank-table{width:100%;border-collapse:collapse;background:var(--card);margin-top:14px}
+.rank-table td,.rank-table th{border-bottom:1px solid var(--rule);padding:9px 12px;font-size:13px;text-align:left;vertical-align:middle}
+.rank-table th{font-family:var(--mono);font-size:11px;color:var(--ink-3);font-weight:600;letter-spacing:.5px}
+.rank-table td.rk{font-family:var(--mono);color:var(--ink-3);width:50px}
+.rank-table td.rk b{color:var(--accent);font-size:15px}
+.rank-table .rname{font-family:var(--mono);font-size:12.5px;font-weight:600;word-break:break-all}
+.rank-table .rname span{color:var(--ink-3);font-weight:400}
+.rank-table .rgain{font-family:var(--mono);font-weight:700;color:var(--green);white-space:nowrap}
+.rank-table .rstars{font-family:var(--mono);color:var(--ink-3);white-space:nowrap}
+.rank-table .rgo{color:var(--accent);font-size:11.5px;white-space:nowrap}
+.rank-table tr:hover td{background:#fbfaf7}
+</style>
+</head>
+<body>
+<aside id="side">
+  <button id="side-toggle" title="收起侧边栏">«</button>
+  <a class="gen-btn" href="orchestrator/" target="_blank" rel="noopener"><span class="ic">▶</span><span class="lbl">工作流生成器</span></a>
+  <div class="side-sep"></div>
+  <nav class="side-nav">
+    <a class="side-link" href="./"><span class="ic">▤</span><span class="lbl">管线库</span></a>
+    <a class="side-link" href="others.html"><span class="ic">▦</span><span class="lbl">其他工作流</span></a>
+    <a class="side-link" href="intro.html"><span class="ic">📖</span><span class="lbl">简介</span></a>
+    <a class="side-link on" href="hot.html"><span class="ic">🔥</span><span class="lbl">热度榜</span></a>
+    <a class="side-link" href="agent.html" target="_blank" rel="noopener"><span class="ic">⚡</span><span class="lbl">agent 更快查找</span></a>
+    <a class="side-link" href="https://github.com/xtr0928/flowscore/issues/new?template=submit.yml" target="_blank" rel="noopener"><span class="ic">✍</span><span class="lbl">投稿</span></a>
+    <a class="side-link" href="community.html"><span class="ic">📬</span><span class="lbl">社区投稿</span></a>
+  </nav>
+  <div class="side-sep"></div>
+  <nav class="side-nav">
+    <a class="side-link" href="https://token8341.com/zh" target="_blank" rel="noopener" title="token8341 · 中转 API 八折"><span class="ic">🎫</span><span class="lbl">八折 Token</span></a>
+    <a class="side-link" href="https://github.com/xtr0928" target="_blank" rel="noopener" title="作者与赞助 · GitHub"><span class="ic">❤</span><span class="lbl">作者与赞助</span></a>
+  </nav>
+</aside>
+<header id="top"><div id="top-in">
+  <div id="brand">
+    <h1>流谱 · 热度榜</h1>
+    <div class="stats" id="stats"></div>
+  </div>
+</div></header>
+
+<main class="doc">
+  <h2>🔥 工作流热度榜</h2>
+  <p id="hot-note" class="note">正在加载热度数据…</p>
+  <div id="rank"></div>
+</main>
+
+<footer>
+  <span>热度 = GitHub 星数增速（每天由服务器自动记录快照）</span>
+  <span id="f-built"></span>
+</footer>
+<script>
+(function(){
+  var KEY='fs_side', b=document.body, t=document.getElementById('side-toggle');
+  try{ if(localStorage.getItem(KEY)==='1') b.classList.add('side-collapsed'); }catch(e){}
+  function sync(){
+    var c=b.classList.contains('side-collapsed');
+    t.textContent=c?'»':'«';
+    t.title=c?'展开侧边栏':'收起侧边栏';
+  }
+  t.addEventListener('click',function(){
+    b.classList.toggle('side-collapsed');
+    try{ localStorage.setItem(KEY, b.classList.contains('side-collapsed')?'1':'0'); }catch(e){}
+    sync();
+  });
+  sync();
+})();</script>
+<script>
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmt(n){ return n>=1000 ? (n/1000).toFixed(n>=10000?0:1)+'k' : String(n); }
+
+let R = [];
+const rankEl = document.getElementById('rank');
+const noteEl = document.getElementById('hot-note');
+function rowEl(i, d, mode){
+  const [owner, repo] = d.n.includes('/') ? d.n.split('/') : ['', d.n];
+  const tr = document.createElement('tr');
+  let gain = '';
+  if (mode === 'g7' && d.g7 != null) gain = `+${d.g7}`;
+  else if (mode === 'g1' && d.g1 != null) gain = `+${d.g1}`;
+  else gain = '—';
+  tr.innerHTML =
+    `<td class="rk">${i+1}</td>` +
+    `<td class="rname"><span>${esc(owner)}/</span>${esc(repo)}` +
+      (d.c ? ` <span style="color:var(--accent);font-family:var(--sans)">· ${esc(d.c)}</span>` : '') + `</td>` +
+    `<td class="rgain">${gain} ${mode==='g7'?'⭐/周':mode==='g1'?'⭐/日':''}</td>` +
+    `<td class="rstars">★ ${fmt(d.s)}</td>` +
+    `<td><a class="rgo" href="${d.u}" target="_blank" rel="noopener">GitHub ↗</a></td>`;
+  return tr;
+}
+fetch('api/hot.json', {cache:'no-cache'}).then(r => r.json()).then(j => {
+  const mode = j.mode || 'seed';
+  let list = j.items.slice();
+  if (mode === 'g7') list.sort((a,b) => (b.g7!=null?b.g7:-1e9) - (a.g7!=null?a.g7:-1e9));
+  else if (mode === 'g1') list.sort((a,b) => (b.g1!=null?b.g1:-1e9) - (a.g1!=null?a.g1:-1e9));
+  else list.sort((a,b) => b.s - a.s);
+  if (mode === 'seed'){
+    noteEl.innerHTML = `📈 热度数据正在积累（已记录 ${j.days||0} 天快照 / 满 2 天出「日增榜」、满 7 天出「周增榜」）。下面先看<b>总星数 TOP</b>，明天开始就是真正的热度榜。`;
+  } else {
+    noteEl.innerHTML = `按 GitHub 星数<b>${mode==='g7'?'周增（近 7 天）':'日增（近 1 天）'}</b>排序 · 已记录 ${j.days} 天快照 · 更新于 ${esc(j.updated||'')}`;
+  }
+  document.getElementById('stats').innerHTML = `<span><b>${list.length}</b> 条入榜</span><span>快照 <b>${j.days||0}</b> 天</span>`;
+  document.getElementById('f-built').textContent = `更新于 ${j.updated||''}`;
+  const table = document.createElement('table');
+  table.className = 'rank-table';
+  const thead = document.createElement('thead');
+  thead.innerHTML = '<tr><th>#</th><th>项目</th><th>涨星</th><th>当前</th><th></th></tr>';
+  const tbody = document.createElement('tbody');
+  const limit = Math.min(list.length, 100);
+  for (let i = 0; i < limit; i++) tbody.appendChild(rowEl(i, list[i], mode));
+  table.appendChild(thead); table.appendChild(tbody);
+  rankEl.innerHTML = ''; rankEl.appendChild(table);
+  if (list.length > limit){
+    const more = document.createElement('p');
+    more.style.cssText = 'text-align:center;padding:20px;color:var(--ink-3);font-family:var(--mono);font-size:12px';
+    more.textContent = `仅显示前 ${limit} 名（共 ${list.length} 条）`;
+    rankEl.appendChild(more);
+  }
+}).catch(e => {
+  noteEl.textContent = '热度数据加载失败，请刷新重试';
+});
+</script>
+</body>
+</html>

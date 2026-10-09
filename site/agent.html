@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Agent 更快查找 · 流谱 FlowScore</title>
+<link rel="icon" href="data:,">
+<style>*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --paper:#faf8f3; --ink:#1c1a16; --ink-2:#4a453d; --ink-3:#8a8377;
+  --rule:#e2ddd2; --card:#ffffff; --accent:#a63a2a; --accent-soft:#f3e7e3;
+  --green:#3f7a4d; --amber:#a8761f;
+  --serif:"Noto Serif SC","Source Han Serif SC","Songti SC","STSong","SimSun",serif;
+  --sans:"Noto Sans SC","Source Han Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",-apple-system,sans-serif;
+  --mono:"JetBrains Mono","SF Mono","Menlo","Consolas",monospace;
+}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+#bar{border-bottom:1px solid var(--rule);background:rgba(250,248,243,.93)}
+#bar-in{max-width:880px;margin:0 auto;padding:14px 24px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+#bar h1{font-family:var(--serif);font-size:18px;font-weight:700}
+#bar .back{margin-left:auto;font-family:var(--mono);font-size:12px}
+main{max-width:880px;margin:0 auto;padding:26px 24px 80px}
+.sub{color:var(--ink-2);font-size:13.5px;margin-bottom:18px}
+.sub b{color:var(--accent)}
+#box{background:var(--card);border:1px solid var(--rule);border-radius:5px;padding:16px;display:flex;flex-direction:column;gap:10px}
+#need{width:100%;min-height:76px;padding:11px 13px;font-size:14px;font-family:var(--sans);border:1px solid var(--rule);border-radius:4px;background:#fffdf9;color:var(--ink);outline:none;resize:vertical;line-height:1.6}
+#need:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+#go{padding:10px 18px;font-size:14px;font-weight:600;font-family:var(--sans);background:var(--accent);color:#fff;border:0;border-radius:3px;cursor:pointer;transition:.15s;letter-spacing:.5px}
+#go:hover{background:#8f3226}
+#go[disabled]{opacity:.5;cursor:wait}
+#status{font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+.hint{font-size:12px;color:var(--ink-3);font-family:var(--mono);line-height:1.9;margin-top:12px}
+.hint code{background:#f3efe7;padding:1px 6px;border-radius:3px;font-size:11.5px}
+#out{display:none;margin-top:22px}
+#out.on{display:block}
+.bar{display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+#engine{font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+#copy{margin-left:auto;padding:7px 14px;font-size:12.5px;font-weight:600;font-family:var(--sans);background:var(--card);border:1px solid var(--rule);border-radius:3px;color:var(--ink-2);cursor:pointer;transition:.15s}
+#copy:hover{border-color:var(--accent);color:var(--accent)}
+#copy.ok{border-color:var(--green);color:var(--green)}
+#urls{background:#fffdf9;border:1px solid var(--rule);border-radius:4px;padding:13px 15px;font-family:var(--mono);font-size:12px;line-height:2;white-space:pre-wrap;word-break:break-all;color:var(--ink-2)}
+#list{list-style:none;margin-top:16px;display:flex;flex-direction:column;gap:10px}
+#list li{background:var(--card);border:1px solid var(--rule);border-radius:4px;padding:12px 15px}
+#list .nm{font-family:var(--mono);font-size:12.5px;font-weight:600}
+#list .ct{font-size:10.5px;padding:1px 7px;background:var(--accent-soft);color:var(--accent);border-radius:2px;margin-left:8px;white-space:nowrap}
+#list .sm{font-size:12.5px;color:var(--ink-2);margin-top:4px;line-height:1.65}
+#list .st{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-top:4px}
+.empty{color:var(--ink-3);font-family:var(--mono);font-size:12.5px;padding:20px 0}
+footer{max-width:880px;margin:0 auto;padding:20px 24px 44px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:11px;color:var(--ink-3);display:flex;gap:16px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div id="bar"><div id="bar-in">
+  <h1>Agent 更快查找</h1>
+  <a class="back" href="./">← 回流谱首页</a>
+</div></div>
+<main>
+  <p class="sub">输入一句需求（比如「把会议录音变成中文纪要」）→ 服务器上的<b>本地 Qwen</b> 从 12,000+ 条「有部署实证」的工作流里语义挑选 → 直接输出<b>项目地址列表</b>。给 agent 抄地址、给自己找轮子，都最快。</p>
+  <div id="box">
+    <textarea id="need" placeholder="例：把会议录音自动变成中文纪要的管线&#10;例：本地部署的图像超分辨率工具&#10;例：用自然语言操作浏览器的 agent"></textarea>
+    <div class="row">
+      <button id="go">✨ 让 Qwen 查找</button>
+      <span id="status"></span>
+    </div>
+  </div>
+  <div class="hint">
+    给 agent 直连（无需鉴权，只读）：<br>
+    <code>curl "https://pipeline.zufe.com.cn/api/search?q=你的需求&n=10"</code> → JSON，items 里就是地址列表；<br>
+    接口清单见 <a href="llms.txt">llms.txt</a> · 全站浏览见 <a href="./">首页</a>。<br>
+    使用规范：查询 ≤200 字 · 每秒限 1 次 · 无状态单轮（不带上下文）· 只返回管线地址列表。
+  </div>
+  <section id="out">
+    <div class="bar">
+      <span id="engine"></span>
+      <button id="copy">📋 复制全部地址</button>
+    </div>
+    <pre id="urls"></pre>
+    <ol id="list"></ol>
+  </section>
+</main>
+<footer>
+  <span>流谱 · FlowScore</span>
+  <span>本地 Qwen 语义挑选 · 失败自动回退关键词 · 接口 v4.0</span>
+</footer>
+<script>
+const BASE = '';  // 生产同源；本地测试时可整体替换为 https://pipeline.zufe.com.cn
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmt(n){ return n>=1000 ? (n/1000).toFixed(n>=10000?0:1)+'k' : String(n); }
+const needEl = document.getElementById('need');
+const goEl = document.getElementById('go');
+const statusEl = document.getElementById('status');
+const outEl = document.getElementById('out');
+const urlsEl = document.getElementById('urls');
+const listEl = document.getElementById('list');
+const engineEl = document.getElementById('engine');
+const copyEl = document.getElementById('copy');
+let lastUrls = '';
+
+async function run(){
+  const need = needEl.value.trim();
+  if (!need){ needEl.focus(); return; }
+  if (need.length > 200){
+    statusEl.textContent = '最多 200 字（当前 ' + need.length + ' 字）· 请精简后再试';
+    needEl.focus(); return;
+  }
+  goEl.disabled = true;
+  statusEl.textContent = '本地 Qwen 正在筛选…（数秒）';
+  outEl.classList.remove('on');
+  try{
+    const r = await fetch(BASE + '/api/search?q=' + encodeURIComponent(need) + '&n=12', {cache:'no-cache'});
+    if (!r.ok){
+      const j = await r.json().catch(function(){ return {}; });
+      throw new Error(j.message || ('HTTP ' + r.status));
+    }
+    const d = await r.json();
+    const items = d.items || [];
+    engineEl.textContent = (d.engine === 'qwen' ? '✨ 本地 Qwen 挑选' : '关键词回退') + ' · ' + items.length + ' 条';
+    const urls = items.map(x => x.url || ('https://github.com/' + x.full_name));
+    lastUrls = urls.join('\n');
+    urlsEl.textContent = lastUrls || '（无结果）';
+    listEl.innerHTML = '';
+    items.forEach(function(x){
+      const li = document.createElement('li');
+      const nm = esc(x.full_name);
+      const url = esc(x.url || ('https://github.com/' + x.full_name));
+      li.innerHTML = '<div><a class="nm" href="' + url + '" target="_blank" rel="noopener">' + nm + '</a>' +
+        (x.category ? '<span class="ct">' + esc(x.category) + '</span>' : '') + '</div>' +
+        '<div class="sm">' + esc(x.summary || x.desc_en || '') + '</div>' +
+        '<div class="st">★ ' + fmt(x.stars) + (x.lang ? ' · ' + esc(x.lang) : '') + (x.f_use ? ' · ' + esc(x.f_use) : '') + '</div>';
+      listEl.appendChild(li);
+    });
+    if (!items.length) listEl.innerHTML = '<li class="empty">没有挑出结果 · 换个说法再试</li>';
+    outEl.classList.add('on');
+    statusEl.textContent = '完成';
+  }catch(e){
+    statusEl.textContent = '查找失败（' + (e.message || '网络错误') + '）· 稍后重试';
+  }finally{
+    goEl.disabled = false;
+  }
+}
+goEl.addEventListener('click', run);
+needEl.addEventListener('keydown', function(e){
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') run();
+});
+copyEl.addEventListener('click', async function(){
+  if (!lastUrls) return;
+  try{
+    await navigator.clipboard.writeText(lastUrls);
+    copyEl.textContent = '✓ 已复制 ' + lastUrls.split('\n').length + ' 个地址';
+    copyEl.classList.add('ok');
+  }catch(e){
+    const r = document.createRange(); r.selectNodeContents(urlsEl);
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    copyEl.textContent = '已选中，请按 Ctrl+C';
+  }
+  setTimeout(function(){ copyEl.textContent = '📋 复制全部地址'; copyEl.classList.remove('ok'); }, 2600);
+});
+</script>
+</body>
+</html>

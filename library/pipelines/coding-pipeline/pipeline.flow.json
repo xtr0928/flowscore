@@ -1,0 +1,418 @@
+{
+  "format": "flowscore.pipeline",
+  "format_version": "2.1.0",
+
+  "identity": {
+    "id": "coding-pipeline",
+    "name": "协同编码管线（执行段）",
+    "version": "1.0.0",
+    "author": "xtr0928",
+    "license": "MIT",
+    "created": "2026-10-09",
+    "based_on": null
+  },
+
+  "about": {
+    "summary": "四模型分工：DS 编排 → GLM 设计 ∥ Qwen 视觉 → Kimi 编码 → 审查 → DS 集成",
+    "requires": ["本地 LLM 端点（4 个模型）", "可写工作目录"],
+    "produces": ["代码文件", "交付报告"]
+  },
+
+  "globals": {
+    "settings": {
+      "language": "zh-CN",
+      "output_dir": "deliverables/",
+      "log_level": "info",
+      "max_total_tokens": 200000
+    },
+    "prompts": [
+      {
+        "id": "gp_role",
+        "label": "全局角色",
+        "as": "system",
+        "text": "你是一名严谨的软件工程师。所有输出必须是可直接运行的内容，不要留占位符或 TODO。"
+      },
+      {
+        "id": "gp_style",
+        "label": "全局输出风格",
+        "as": "user_prefix",
+        "text": "输出用 Markdown；代码块必须标注语言；中文说明为主。"
+      }
+    ],
+    "apply_to": "all"
+  },
+
+  "runtime": {
+    "concurrency": 3,
+    "continue_on_error": false,
+    "timeout_sec": 900
+  },
+
+  "nodes": [
+    {
+      "seq": 1,
+      "id": "n_req",
+      "type": "input",
+      "label": "需求文本",
+      "does": "管线起点：接收用户的一段需求描述",
+      "inputs": [],
+      "outputs": [
+        {
+          "port": "text",
+          "type": "text",
+          "carries": "用户的原始需求文本（自然语言）",
+          "to": [ { "node": "n_p0", "port": "req" } ]
+        }
+      ]
+    },
+
+    {
+      "seq": 2,
+      "id": "n_p0",
+      "type": "model_call",
+      "label": "需求理解",
+      "does": "把自然语言需求拆成结构化任务清单",
+      "note": "下游三个分支都从这一个端口取需求，保证它们看到的原始需求是同一份。",
+      "inputs": [
+        {
+          "port": "req",
+          "type": "text",
+          "carries": "用户原始需求",
+          "required": true,
+          "from": [ { "node": "n_req", "port": "text" } ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "spec",
+          "type": "text",
+          "carries": "结构化需求规格（章节 / 约束 / 验收标准）",
+          "to": [
+            { "node": "n_p1",  "port": "req" },
+            { "node": "n_p1b", "port": "req" }
+          ]
+        }
+      ],
+      "config": {
+        "provider": { "id": "deepseek", "model": "deepseek-v4-flash", "endpoint": "local" },
+        "prompt": { "template": "……", "variables": ["input.req"] },
+        "params": { "temperature": 0.2, "max_tokens": 4000 }
+      }
+    },
+
+    {
+      "seq": 3,
+      "id": "n_p1",
+      "type": "model_call",
+      "label": "整体设计",
+      "does": "产出文件清单与接口约定",
+      "inputs": [
+        {
+          "port": "req",
+          "type": "text",
+          "carries": "结构化需求规格",
+          "required": true,
+          "from": [ { "node": "n_p0", "port": "spec" } ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "design",
+          "type": "text",
+          "carries": "整体设计：文件清单与接口约定",
+          "to": [
+            { "node": "n_p2",  "port": "design" },
+            { "node": "n_p3c", "port": "design" }
+          ]
+        }
+      ],
+      "config": {
+        "provider": { "id": "glm", "model": "glm-5.3" },
+        "prompt": { "template": "……", "variables": ["input.req"] },
+        "params": { "temperature": 0.3, "max_tokens": 8000 }
+      }
+    },
+
+    {
+      "seq": 4,
+      "id": "n_p1b",
+      "type": "model_call",
+      "label": "视觉规格",
+      "does": "定义界面结构与视觉要求",
+      "note": "只从 ①需求理解 取输入、不从 ②整体设计 取 —— 让视觉规格忠于原始需求，不被设计者的组织方式带偏。",
+      "inputs": [
+        {
+          "port": "req",
+          "type": "text",
+          "carries": "结构化需求规格",
+          "required": true,
+          "from": [ { "node": "n_p0", "port": "spec" } ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "visual",
+          "type": "text",
+          "carries": "界面结构与视觉要求",
+          "to": [ { "node": "n_p3b", "port": "visual" } ]
+        }
+      ],
+      "config": {
+        "provider": { "id": "qwen", "model": "qwen3-27b" },
+        "prompt": { "template": "……", "variables": ["input.req"] },
+        "params": { "temperature": 0.4, "max_tokens": 6000 }
+      }
+    },
+
+    {
+      "seq": 5,
+      "id": "n_note1",
+      "type": "note",
+      "label": "编码约定",
+      "does": "给「逐文件编码」注入的固定提示词：项目代码风格与硬性约束",
+      "text": "统一 4 空格缩进；禁止使用 any；所有公开函数必须有 docstring；不得留 TODO 或占位实现；文件名用小写下划线。",
+      "inputs": [],
+      "outputs": [
+        {
+          "port": "text",
+          "type": "text",
+          "carries": "固定提示词片段（代码风格约束）",
+          "inject": "system",
+          "to": [ { "node": "n_p2", "port": "convention" } ]
+        }
+      ]
+    },
+
+    {
+      "seq": 6,
+      "id": "n_p2",
+      "type": "model_call",
+      "label": "逐文件编码",
+      "does": "按整体设计逐个输出代码文件",
+      "inputs": [
+        {
+          "port": "design",
+          "type": "text",
+          "carries": "整体设计：文件清单与接口约定",
+          "required": true,
+          "from": [ { "node": "n_p1", "port": "design" } ]
+        },
+        {
+          "port": "convention",
+          "type": "text",
+          "carries": "代码风格约束（来自注释节点，静态注入提示词）",
+          "required": true,
+          "inject": "system",
+          "from": [ { "node": "n_note1", "port": "text" } ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "code",
+          "type": "text",
+          "carries": "逐文件代码内容",
+          "to": [
+            { "node": "n_p3a", "port": "code" },
+            { "node": "n_p3c", "port": "code" },
+            { "node": "n_p3b", "port": "code" }
+          ]
+        }
+      ],
+      "config": {
+        "provider": { "id": "kimi", "model": "kimi-for-coding" },
+        "prompt": { "template": "……", "variables": ["input.design", "input.convention"] },
+        "params": { "temperature": 0.1, "max_tokens": 32000 }
+      }
+    },
+
+    {
+      "seq": 7,
+      "id": "n_p3a",
+      "type": "model_call",
+      "label": "代码审查",
+      "does": "逐文件审查代码质量，产出问题清单",
+      "inputs": [
+        {
+          "port": "code",
+          "type": "text",
+          "carries": "待审查的代码",
+          "required": true,
+          "from": [ { "node": "n_p2", "port": "code" } ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "review",
+          "type": "text",
+          "carries": "代码质量审查意见",
+          "to": [ { "node": "n_p4", "port": "review_code" } ]
+        }
+      ],
+      "config": {
+        "provider": { "id": "glm", "model": "glm-5.3" },
+        "prompt": { "template": "……", "variables": ["input.code"] },
+        "params": { "temperature": 0.2, "max_tokens": 8000 }
+      }
+    },
+
+    {
+      "seq": 8,
+      "id": "n_p3c",
+      "type": "model_call",
+      "label": "安全审查",
+      "does": "检查注入 / 越权 / 凭据泄漏等安全问题",
+      "inputs": [
+        {
+          "port": "code",
+          "type": "text",
+          "carries": "待审查的代码",
+          "required": true,
+          "from": [ { "node": "n_p2", "port": "code" } ]
+        },
+        {
+          "port": "design",
+          "type": "text",
+          "carries": "整体设计（用于判断边界与信任模型）",
+          "required": false,
+          "from": [ { "node": "n_p1", "port": "design" } ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "review",
+          "type": "text",
+          "carries": "安全审查意见",
+          "to": [ { "node": "n_p4", "port": "review_code" } ]
+        }
+      ],
+      "config": {
+        "provider": { "id": "deepseek", "model": "deepseek-v4-flash" },
+        "prompt": { "template": "……", "variables": ["input.code", "input.design"] },
+        "params": { "temperature": 0.1, "max_tokens": 8000 }
+      }
+    },
+
+    {
+      "seq": 9,
+      "id": "n_p3b",
+      "type": "model_call",
+      "label": "视觉审查",
+      "does": "渲染界面后审查视觉呈现，产出视觉问题清单",
+      "inputs": [
+        {
+          "port": "code",
+          "type": "text",
+          "carries": "待审查的代码",
+          "required": true,
+          "from": [ { "node": "n_p2", "port": "code" } ]
+        },
+        {
+          "port": "visual",
+          "type": "text",
+          "carries": "界面结构与视觉要求（评判基准）",
+          "required": false,
+          "from": [ { "node": "n_p1b", "port": "visual" } ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "review",
+          "type": "text",
+          "carries": "视觉审查意见（截图 + 问题清单）",
+          "to": [ { "node": "n_p4", "port": "review_visual" } ]
+        }
+      ],
+      "config": {
+        "provider": { "id": "qwen", "model": "qwen3-vl-8b", "modality": "vision" },
+        "prompt": { "template": "……", "variables": ["input.code", "input.visual"] },
+        "params": { "temperature": 0.2, "max_tokens": 8000 }
+      }
+    },
+
+    {
+      "seq": 10,
+      "id": "n_p4",
+      "type": "model_call",
+      "label": "汇总修复",
+      "does": "把两份代码审查与一份视觉审查合并，产出最终可交付代码",
+      "note": "代码质量 + 安全两份审查是阻断项（mode=all：两份都到齐才动手）；视觉审查是增强项（required=false：缺了也照跑）。",
+      "annotations": ["n_note2"],
+      "inputs": [
+        {
+          "port": "review_code",
+          "type": "text",
+          "carries": "代码审查意见（质量 + 安全，合并后的大文本）",
+          "required": true,
+          "mode": "all",
+          "from": [
+            { "node": "n_p3a", "port": "review" },
+            { "node": "n_p3c", "port": "review" }
+          ]
+        },
+        {
+          "port": "review_visual",
+          "type": "text",
+          "carries": "视觉审查意见",
+          "required": false,
+          "from": [ { "node": "n_p3b", "port": "review" } ]
+        }
+      ],
+      "outputs": [
+        {
+          "port": "result",
+          "type": "text",
+          "carries": "最终代码 + 修复说明",
+          "to": [ { "node": "n_end", "port": "content" } ]
+        }
+      ],
+      "config": {
+        "provider": { "id": "deepseek", "model": "deepseek-v4-flash" },
+        "prompt": { "template": "……", "variables": ["input.review_code", "input.review_visual"] },
+        "params": { "temperature": 0.2, "max_tokens": 16000, "reasoning_effort": "high" }
+      }
+    },
+
+    {
+      "seq": 11,
+      "id": "n_end",
+      "type": "output",
+      "label": "交付报告",
+      "does": "把最终结果落盘为交付报告",
+      "inputs": [
+        {
+          "port": "content",
+          "type": "text",
+          "carries": "最终代码与说明",
+          "required": true,
+          "from": [ { "node": "n_p4", "port": "result" } ]
+        }
+      ],
+      "outputs": [],
+      "config": { "write_to": "deliverables/report.md", "format": "md" }
+    },
+
+    {
+      "seq": 12,
+      "id": "n_note2",
+      "type": "note",
+      "label": "关于汇总修复的提醒",
+      "does": "挂在「⑦ 汇总修复」节点上的说明（不注入提示词，只给人看）",
+      "text": "视觉审查是可选项 —— 所以这个节点在视觉意见缺失时也会照常出结果。人工复核最终报告时，注意区分「视觉问题确实没有」和「视觉审查根本没跑」这两种情况。",
+      "inputs": [],
+      "outputs": [],
+      "attached_to": [ { "node": "n_p4" } ]
+    },
+
+    {
+      "seq": 13,
+      "id": "n_note3",
+      "type": "note",
+      "label": "运行提示（纯漂浮）",
+      "does": "不连任何节点的说明",
+      "text": "整条管线约 20 分钟、消耗约 8 万 token。首次运行建议先用 sample 试跑一遍验证环境。四条模型端点必须同时在位，缺一条会在对应节点报错停下。",
+      "inputs": [],
+      "outputs": [],
+      "attached_to": []
+    }
+  ]
+}
