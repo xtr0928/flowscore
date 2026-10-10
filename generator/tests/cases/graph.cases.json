@@ -1,0 +1,596 @@
+{
+  "canConnect": [
+    {
+      "desc": "自连：源与目标是同一节点的端口，应拒绝",
+      "doc": {
+        "schema_version": "1.0.0",
+        "kind": "pipeline",
+        "meta": {
+          "name": "自连测试管线"
+        },
+        "runtime": {
+          "output_dir": "dist"
+        },
+        "nodes": [
+          {
+            "id": "n1",
+            "type": "input",
+            "inputs": [],
+            "outputs": [
+              {
+                "id": "out",
+                "type": "text"
+              }
+            ]
+          },
+          {
+            "id": "n2",
+            "type": "model",
+            "inputs": [
+              {
+                "id": "in",
+                "type": "text"
+              }
+            ],
+            "outputs": [
+              {
+                "id": "out",
+                "type": "text"
+              }
+            ]
+          }
+        ],
+        "edges": []
+      },
+      "from": {
+        "node": "n2",
+        "port": "out"
+      },
+      "to": {
+        "node": "n2",
+        "port": "in"
+      },
+      "expect": {
+        "ok": false,
+        "reasonContains": "自连"
+      }
+    },
+    {
+      "desc": "端口不存在：目标端口在节点上未定义，应拒绝",
+      "doc": {
+        "schema_version": "1.0.0",
+        "kind": "pipeline",
+        "meta": {
+          "name": "端口不存在测试管线"
+        },
+        "runtime": {
+          "output_dir": "dist"
+        },
+        "nodes": [
+          {
+            "id": "n1",
+            "type": "input",
+            "inputs": [],
+            "outputs": [
+              {
+                "id": "out",
+                "type": "text"
+              }
+            ]
+          },
+          {
+            "id": "n2",
+            "type": "model",
+            "inputs": [
+              {
+                "id": "in",
+                "type": "text"
+              }
+            ],
+            "outputs": [
+              {
+                "id": "out",
+                "type": "text"
+              }
+            ]
+          }
+        ],
+        "edges": []
+      },
+      "from": {
+        "node": "n1",
+        "port": "out"
+      },
+      "to": {
+        "node": "n2",
+        "port": "not_exist"
+      },
+      "expect": {
+        "ok": false,
+        "reasonContains": "端口不存在"
+      }
+    },
+    {
+      "desc": "输入端口已占用：目标输入端口已有连线，应拒绝",
+      "doc": {
+        "schema_version": "1.0.0",
+        "kind": "pipeline",
+        "meta": {
+          "name": "端口占用测试管线"
+        },
+        "runtime": {
+          "output_dir": "dist"
+        },
+        "nodes": [
+          {
+            "id": "n1",
+            "type": "input",
+            "inputs": [],
+            "outputs": [
+              {
+                "id": "out",
+                "type": "text"
+              }
+            ]
+          },
+          {
+            "id": "n2",
+            "type": "model",
+            "inputs": [
+              {
+                "id": "in",
+                "type": "text"
+              }
+            ],
+            "outputs": [
+              {
+                "id": "out",
+                "type": "text"
+              }
+            ]
+          },
+          {
+            "id": "n3",
+            "type": "input",
+            "inputs": [],
+            "outputs": [
+              {
+                "id": "out",
+                "type": "text"
+              }
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "from": {
+              "node": "n1",
+              "port": "out"
+            },
+            "to": {
+              "node": "n2",
+              "port": "in"
+            }
+          }
+        ]
+      },
+      "from": {
+        "node": "n3",
+        "port": "out"
+      },
+      "to": {
+        "node": "n2",
+        "port": "in"
+      },
+      "expect": {
+        "ok": false,
+        "reasonContains": "已占用"
+      }
+    },
+    {
+      "desc": "类型不匹配：text 输出连向 json 输入，应拒绝",
+      "doc": {
+        "schema_version": "1.0.0",
+        "kind": "pipeline",
+        "meta": {
+          "name": "类型不匹配测试管线"
+        },
+        "runtime": {
+          "output_dir": "dist"
+        },
+        "nodes": [
+          {
+            "id": "n1",
+            "type": "input",
+            "inputs": [],
+            "outputs": [
+              {
+                "id": "out",
+                "type": "text"
+              }
+            ]
+          },
+          {
+            "id": "n2",
+            "type": "model",
+            "inputs": [
+              {
+                "id": "in",
+                "type": "json"
+              }
+            ],
+            "outputs": [
+              {
+                "id": "out",
+                "type": "text"
+              }
+            ]
+          }
+        ],
+        "edges": []
+      },
+      "from": {
+        "node": "n1",
+        "port": "out"
+      },
+      "to": {
+        "node": "n2",
+        "port": "in"
+      },
+      "expect": {
+        "ok": false,
+        "reasonContains": "类型不匹配"
+      }
+    },
+    {
+      "desc": "成环：新连线会形成环路，应拒绝",
+      "doc": {
+        "schema_version": "1.0.0",
+        "kind": "pipeline",
+        "meta": {
+          "name": "成环测试管线"
+        },
+        "runtime": {
+          "output_dir": "dist"
+        },
+        "nodes": [
+          {
+            "id": "n1",
+            "type": "input",
+            "inputs": [],
+            "outputs": [
+              {
+                "id": "out",
+                "type": "text"
+              }
+            ]
+          },
+          {
+            "id": "n2",
+            "type": "model",
+            "inputs": [
+              {
+                "id": "in",
+                "type": "text"
+              },
+              {
+                "id": "in2",
+                "type": "text"
+              }
+            ],
+            "outputs": [
+              {
+                "id": "out",
+                "type": "text"
+              }
+            ]
+          },
+          {
+            "id": "n3",
+            "type": "model",
+            "inputs": [
+              {
+                "id": "in",
+                "type": "text"
+              }
+            ],
+            "outputs": [
+              {
+                "id": "out",
+                "type": "text"
+              }
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "from": {
+              "node": "n1",
+              "port": "out"
+            },
+            "to": {
+              "node": "n2",
+              "port": "in"
+            }
+          },
+          {
+            "from": {
+              "node": "n2",
+              "port": "out"
+            },
+            "to": {
+              "node": "n3",
+              "port": "in"
+            }
+          }
+        ]
+      },
+      "from": {
+        "node": "n3",
+        "port": "out"
+      },
+      "to": {
+        "node": "n2",
+        "port": "in2"
+      },
+      "expect": {
+        "ok": false,
+        "reasonContains": "成环"
+      }
+    }
+  ],
+  "cycle": [
+    {
+      "desc": "无环连线：不构成环",
+      "edges": [
+        {
+          "from": {
+            "node": "n1",
+            "port": "out"
+          },
+          "to": {
+            "node": "n2",
+            "port": "in"
+          }
+        }
+      ],
+      "from": {
+        "node": "n2",
+        "port": "out"
+      },
+      "to": {
+        "node": "n3",
+        "port": "in"
+      },
+      "expect": {
+        "ok": true,
+        "reasonContains": ""
+      }
+    },
+    {
+      "desc": "成环连线：n3 回连 n2 构成环路（本组仅按节点级环检测，不校验端口）",
+      "edges": [
+        {
+          "from": {
+            "node": "n1",
+            "port": "out"
+          },
+          "to": {
+            "node": "n2",
+            "port": "in"
+          }
+        },
+        {
+          "from": {
+            "node": "n2",
+            "port": "out"
+          },
+          "to": {
+            "node": "n3",
+            "port": "in"
+          }
+        }
+      ],
+      "from": {
+        "node": "n3",
+        "port": "out"
+      },
+      "to": {
+        "node": "n2",
+        "port": "in2"
+      },
+      "expect": {
+        "ok": false,
+        "reasonContains": "成环"
+      }
+    }
+  ],
+  "topoSort": [
+    {
+      "desc": "DAG 正常拓扑序：n1 → n2 → n3 线性链",
+      "doc": {
+        "schema_version": "1.0.0",
+        "kind": "pipeline",
+        "meta": {
+          "name": "拓扑排序正常序管线"
+        },
+        "runtime": {
+          "output_dir": "dist"
+        },
+        "nodes": [
+          {
+            "id": "n1",
+            "type": "input",
+            "inputs": [],
+            "outputs": [
+              {
+                "id": "out",
+                "type": "text"
+              }
+            ]
+          },
+          {
+            "id": "n2",
+            "type": "model",
+            "inputs": [
+              {
+                "id": "in",
+                "type": "text"
+              }
+            ],
+            "outputs": [
+              {
+                "id": "out",
+                "type": "text"
+              }
+            ]
+          },
+          {
+            "id": "n3",
+            "type": "model",
+            "inputs": [
+              {
+                "id": "in",
+                "type": "text"
+              }
+            ],
+            "outputs": [
+              {
+                "id": "out",
+                "type": "text"
+              }
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "from": {
+              "node": "n1",
+              "port": "out"
+            },
+            "to": {
+              "node": "n2",
+              "port": "in"
+            }
+          },
+          {
+            "from": {
+              "node": "n2",
+              "port": "out"
+            },
+            "to": {
+              "node": "n3",
+              "port": "in"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "order": [
+          "n1",
+          "n2",
+          "n3"
+        ],
+        "hasCycle": false
+      }
+    },
+    {
+      "desc": "带环图：n1 → n2 → n3 → n1，应检测出环",
+      "doc": {
+        "schema_version": "1.0.0",
+        "kind": "pipeline",
+        "meta": {
+          "name": "拓扑排序带环管线"
+        },
+        "runtime": {
+          "output_dir": "dist"
+        },
+        "nodes": [
+          {
+            "id": "n1",
+            "type": "input",
+            "inputs": [
+              {
+                "id": "in",
+                "type": "text"
+              }
+            ],
+            "outputs": [
+              {
+                "id": "out",
+                "type": "text"
+              }
+            ]
+          },
+          {
+            "id": "n2",
+            "type": "model",
+            "inputs": [
+              {
+                "id": "in",
+                "type": "text"
+              }
+            ],
+            "outputs": [
+              {
+                "id": "out",
+                "type": "text"
+              }
+            ]
+          },
+          {
+            "id": "n3",
+            "type": "model",
+            "inputs": [
+              {
+                "id": "in",
+                "type": "text"
+              }
+            ],
+            "outputs": [
+              {
+                "id": "out",
+                "type": "text"
+              }
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "from": {
+              "node": "n1",
+              "port": "out"
+            },
+            "to": {
+              "node": "n2",
+              "port": "in"
+            }
+          },
+          {
+            "from": {
+              "node": "n2",
+              "port": "out"
+            },
+            "to": {
+              "node": "n3",
+              "port": "in"
+            }
+          },
+          {
+            "from": {
+              "node": "n3",
+              "port": "out"
+            },
+            "to": {
+              "node": "n1",
+              "port": "in"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "hasCycle": true
+      }
+    }
+  ]
+}

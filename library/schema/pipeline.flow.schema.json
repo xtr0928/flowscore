@@ -475,6 +475,44 @@
             "format": {
               "type": "string",
               "description": "【output 节点】输出格式。"
+            },
+            "structured": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "description": "结构化输出：用 Function Calling / JSON Schema 约束模型返回；下游运行时据此校验返回值",
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "",
+                    "function_call",
+                    "json_schema",
+                    null
+                  ],
+                  "description": "prompt=自由文本 / function_call=工具调用 / json_schema=结构化输出"
+                },
+                "tool_name": {
+                  "type": "string",
+                  "description": "Function Calling 的函数名"
+                },
+                "tool_description": {
+                  "type": "string",
+                  "description": "给模型看的函数说明"
+                },
+                "schema": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "description": "返回值必须满足的 JSON Schema"
+                },
+                "strict": {
+                  "type": "boolean",
+                  "description": "是否要求模型严格遵循 Schema"
+                }
+              }
             }
           }
         }

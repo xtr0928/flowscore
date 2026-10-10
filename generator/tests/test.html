@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XTR 领域层浏览器测试</title>
+<style>
+  body { font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; margin: 24px; color: #222; }
+  h1 { font-size: 20px; margin: 0 0 8px 0; }
+  .banner { padding: 10px 16px; border-radius: 6px; font-weight: bold; margin: 12px 0; }
+  .banner.pending { background: #f5f5f5; color: #666; border: 1px solid #ccc; }
+  .banner.green { background: #e6f7e6; color: #1a7f1a; border: 1px solid #1a7f1a; }
+  .banner.red { background: #fdecea; color: #b3261e; border: 1px solid #b3261e; }
+  .note { background: #fffbe6; border: 1px solid #e6d16b; padding: 8px 12px; border-radius: 6px; font-size: 13px; line-height: 1.7; }
+  .note code { background: #f5f0d0; padding: 1px 5px; border-radius: 3px; }
+  #summary { font-size: 13px; color: #555; margin-top: 8px; }
+  table { border-collapse: collapse; width: 100%; margin-top: 16px; font-size: 13px; }
+  th, td { border: 1px solid #d9d9d9; padding: 6px 10px; text-align: left; vertical-align: top; word-break: break-all; }
+  thead th { background: #fafafa; }
+  tr.group td { background: #f0f5ff; font-weight: bold; }
+  tr.pass td.ok { background: #e6f7e6; color: #1a7f1a; font-weight: bold; }
+  tr.fail { background: #fdecea; }
+  tr.fail td.bad { color: #b3261e; font-weight: bold; }
+  td.expected, td.actual { font-family: Menlo, Consolas, monospace; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<h1>XTR 领域层浏览器测试（零依赖）</h1>
+
+<div class="note">
+  <strong>README / 使用说明：</strong>本页通过隐藏 iframe 加载 <code>../index.html</code>，在 iframe 加载完成后访问
+  <code>iframe.contentWindow.XTR</code> 上的领域层接口（model / validate / compat / graph / io）执行断言。<br>
+  因 <code>file://</code> 协议下 iframe 同源访问与 fetch 在部分浏览器受限，<strong>建议用本地静态服务器打开本页</strong>：
+  在项目根目录执行 <code>python -m http.server</code>，然后访问
+  <code>http://localhost:8000/tests/test.html</code>。测试用例来自
+  <code>tests/cases/graph.cases.json</code>、<code>tests/cases/validate.cases.json</code>、<code>tests/cases/compat.cases.json</code>。
+</div>
+
+<div id="banner" class="banner pending">测试运行中……</div>
+<div id="summary"></div>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:26%">用例名</th>
+      <th style="width:27%">期望</th>
+      <th style="width:37%">实际</th>
+      <th style="width:10%">结果</th>
+    </tr>
+  </thead>
+  <tbody id="tbody"></tbody>
+</table>
+
+<!-- schema 等价性测试的手工内联副本：以下两个标签已内联完整副本（M1 交付标准），源文件为
+     ../schema/pipeline.schema.json 与 ../schema/layout.schema.json；更新后请同步刷新此处。
+     标签留空时仍会回退为运行时 fetch。 -->
+<script type="application/json" id="inline-schema-pipeline">
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pipeline.schema.json",
+  "title": "管线可执行配置",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "meta",
+    "runtime",
+    "nodes",
+    "edges"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "kind": {
+      "const": "pipeline"
+    },
+    "meta": {
+      "$ref": "#/$defs/meta"
+    },
+    "runtime": {
+      "$ref": "#/$defs/runtime"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/node"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/edge"
+      }
+    }
+  },
+  "$defs": {
+    "meta": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "author": {
+          "type": "string"
+        }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "properties": {
+        "output_dir": {
+          "type": "string",
+          "minLength": 1
+        },
+        "concurrency": {
+          "type": "integer"
+        },
+        "continue_on_error": {
+          "type": "boolean"
+        }
+      }
+    },
+    "port": {
+      "type": "object",
+      "required": [
+        "id",
+        "type"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "text",
+            "json",
+            "file",
+            "any"
+          ]
+        },
+        "label": {
+          "type": "string"
+        }
+      }
+    },
+    "provider": {
+      "type": "object",
+      "required": [
+        "id",
+        "label"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "channel": {
+          "enum": [
+            "builtin",
+            "custom"
+          ]
+        },
+        "base_url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "api_key_env": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "prompt": {
+      "type": "object",
+      "required": [
+        "template"
+      ],
+      "properties": {
+        "template": {
+          "type": "string",
+          "minLength": 1
+        },
+        "variables": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "outputSpec": {
+      "type": "object",
+      "required": [
+        "format"
+      ],
+      "properties": {
+        "format": {
+          "anyOf": [
+            {
+              "enum": [
+                "md",
+                "html",
+                "json",
+                "txt",
+                "png"
+              ]
+            },
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9]{1,10}$"
+            }
+          ]
+        },
+        "filename_template": {
+          "type": "string",
+          "pattern": "^[^/\\\\:*?\"<>|]+$"
+        }
+      }
+    },
+    "inputNodeConfig": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/port"
+          }
+        }
+      }
+    },
+    "modelCallConfig": {
+      "type": "object",
+      "required": [
+        "provider",
+        "model",
+        "prompt",
+        "output"
+      ],
+      "properties": {
+        "provider": {
+          "$ref": "#/$defs/provider"
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "prompt": {
+          "$ref": "#/$defs/prompt"
+        },
+        "output": {
+          "$ref": "#/$defs/outputSpec"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/port"
+          }
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/port"
+          }
+        }
+      }
+    },
+    "outputNodeConfig": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "anyOf": [
+            {
+              "enum": [
+                "md",
+                "html",
+                "json",
+                "txt",
+                "png"
+              ]
+            },
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9]{1,10}$"
+            }
+          ]
+        },
+        "filename_template": {
+          "type": "string",
+          "pattern": "^[^/\\\\:*?\"<>|]+$"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/port"
+          }
+        }
+      }
+    },
+    "node": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "type",
+            "config"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": {
+              "const": "input"
+            },
+            "label": {
+              "type": "string"
+            },
+            "config": {
+              "$ref": "#/$defs/inputNodeConfig"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "type",
+            "config"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": {
+              "const": "model_call"
+            },
+            "label": {
+              "type": "string"
+            },
+            "config": {
+              "$ref": "#/$defs/modelCallConfig"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "type",
+            "config"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "type": {
+              "const": "output"
+            },
+            "label": {
+              "type": "string"
+            },
+            "config": {
+              "$ref": "#/$defs/outputNodeConfig"
+            }
+          }
+        }
+      ]
+    },
+    "edge": {
+      "type": "object",
+      "required": [
+        "from",
+        "to"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "type": "string",
+          "minLength": 1
+        },
+        "to": {
+          "type": "string",
+          "minLength": 1
+        },
+        "from_port": {
+          "type": "string",
+          "minLength": 1
+        },
+        "to_port": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+</script>
+<script type="application/json" id="inline-schema-layout">
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/xtr/layout.schema.json",
+  "title": "XTR Layout Schema",
+  "description": "布局文件的权威 JSON Schema。本文件同时作为 index.html 内联常量 XTR.validate.SCHEMA.layout 的唯一来源；本 Schema 只承载布局信息，不得包含任何节点业务配置字段（F4.4 契约级保障）。",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "meta",
+    "viewport",
+    "canvas",
+    "nodes"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "布局文件的 schema 版本号。"
+    },
+    "kind": {
+      "const": "layout",
+      "description": "文件类型标识，固定为 layout。"
+    },
+    "meta": {
+      "type": "object",
+      "description": "布局元信息。",
+      "additionalProperties": true
+    },
+    "viewport": {
+      "type": "object",
+      "description": "视口状态。",
+      "required": [
+        "x",
+        "y",
+        "zoom"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "视口横向偏移。"
+        },
+        "y": {
+          "type": "number",
+          "description": "视口纵向偏移。"
+        },
+        "zoom": {
+          "type": "number",
+          "minimum": 0.25,
+          "maximum": 2.5,
+          "description": "缩放倍率，范围 [0.25, 2.5]。"
+        }
+      }
+    },
+    "canvas": {
+      "type": "object",
+      "description": "画布设置。",
+      "required": [
+        "grid",
+        "background"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "grid": {
+          "type": "object",
+          "description": "网格设置。",
+          "required": [
+            "size",
+            "visible"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "size": {
+              "type": "number",
+              "minimum": 4,
+              "default": 20,
+              "description": "网格尺寸，最小 4，默认 20。"
+            },
+            "visible": {
+              "type": "boolean",
+              "description": "网格是否可见。"
+            }
+          }
+        },
+        "background": {
+          "type": "string",
+          "description": "画布背景。"
+        }
+      }
+    },
+    "nodes": {
+      "type": "object",
+      "description": "节点记录表，键为任意 node.id。",
+      "additionalProperties": {
+        "type": "object",
+        "description": "单个节点的布局记录。",
+        "required": [
+          "x",
+          "y"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "x": {
+            "type": "number",
+            "description": "节点横向坐标。"
+          },
+          "y": {
+            "type": "number",
+            "description": "节点纵向坐标。"
+          },
+          "w": {
+            "type": "number",
+            "description": "节点宽度。"
+          },
+          "h": {
+            "type": "number",
+            "description": "节点高度。"
+          },
+          "collapsed": {
+            "type": "boolean",
+            "description": "节点是否折叠。"
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "节点颜色，允许 null 表示未设置。"
+          },
+          "z": {
+            "type": "number",
+            "description": "节点堆叠层级。"
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "object",
+      "description": "连线记录表，键为任意 edge 标识，非必填。",
+      "additionalProperties": {
+        "type": "object",
+        "description": "单条连线的布局记录。",
+        "additionalProperties": false,
+        "properties": {
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "连线颜色，允许 null 表示未设置。"
+          },
+          "waypoints": {
+            "type": "array",
+            "description": "连线途经点列表。",
+            "items": {
+              "type": "object",
+              "description": "单个途经点。",
+              "required": [
+                "x",
+                "y"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "x": {
+                  "type": "number",
+                  "description": "途经点横向坐标。"
+                },
+                "y": {
+                  "type": "number",
+                  "description": "途经点纵向坐标。"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "groups": {
+      "type": "array",
+      "description": "分组区域（Schema 预留，当前不含 UI 创建入口）。",
+      "items": {
+        "type": "object",
+        "description": "单个分组区域。",
+        "required": [
+          "id",
+          "title",
+          "members",
+          "x",
+          "y",
+          "w",
+          "h",
+          "color"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "分组唯一标识。"
+          },
+          "title": {
+            "type": "string",
+            "description": "分组标题。"
+          },
+          "members": {
+            "type": "array",
+            "description": "分组成员的 node.id 列表。",
+            "items": {
+              "type": "string"
+            }
+          },
+          "x": {
+            "type": "number",
+            "description": "分组区域横向坐标。"
+          },
+          "y": {
+            "type": "number",
+            "description": "分组区域纵向坐标。"
+          },
+          "w": {
+            "type": "number",
+            "description": "分组区域宽度。"
+          },
+          "h": {
+            "type": "number",
+            "description": "分组区域高度。"
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "分组颜色，允许 null 表示未设置。"
+          }
+        }
+      }
+    }
+  }
+}
+</script>
+
+<iframe id="app-frame" src="../index.html" hidden></iframe>
+
+<script>
+(function () {
+  'use strict';
+
+  var iframe = document.getElementById('app-frame');
+  var tbody = document.getElementById('tbody');
+  var banner = document.getElementById('banner');
+  var summaryEl = document.getElementById('summary');
+
+  var total = 0;
+  var failed = 0;
+  var currentGroup = null;
+
+  /* ---------------- 通用工具 ---------------- */
+
+  function safeStr(v) {
+    try {
+      if (typeof v === 'string') return v;
+      return JSON.stringify(v);
+    } catch (e) {
+      return String(v);
+    }
+  }
+
+  function arraysEqual(a, b) {
+    return Array.isArray(a) && Array.isArray(b) &&
+      a.length === b.length && a.every(function (v, i) { return v === b[i]; });
+  }
+
+  function canon(v) {
+    if (v === undefined) return 'undefined';
+    if (v === null || typeof v !== 'object') return JSON.stringify(v);
+    if (Array.isArray(v)) return '[' + v.map(canon).join(',') + ']';
+    return '{' + Object.keys(v).sort().map(function (k) {
+      return JSON.stringify(k) + ':' + canon(v[k]);
+    }).join(',') + '}';
+  }
+
+  function firstDiffIndex(a, b) {
+    var n = Math.min(a.length, b.length);
+    for (var i = 0; i < n; i++) if (a[i] !== b[i]) return i;
+    return n;
+  }
+
+  function pick(obj, keys, dflt) {
+    for (var i = 0; i < keys.length; i++) {
+      if (obj && obj[keys[i]] !== undefined) return obj[keys[i]];
+    }
+    return dflt;
+  }
+
+  function resolveFn(obj, names) {
+    if (!obj) return null;
+    for (var i = 0; i < names.length; i++) {
+      if (typeof obj[names[i]] === 'function') return obj[names[i]].bind(obj);
+    }
+    return null;
+  }
+
+  async function fetchJSON(path) {
+    var res = await fetch(path);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      // 兼容用例文件中出现 "input": undefined 等非严格 JSON 写法
+      try {
+        return JSON.parse(text.replace(/:\s*undefined\b/g, ': null'));
+      } catch (e2) {
+        throw new Error('JSON 解析失败: ' + e2.message);
+      }
+    }
+  }
+
+  /* ---------------- 结果渲染 ---------------- */
+
+  function appendGroupRow(name) {
+    var tr = document.createElement('tr');
+    tr.className = 'group';
+    var td = document.createElement('td');
+    td.colSpan = 4;
+    td.textContent = '【' + name + '】';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  }
+
+  function record(group, name, expected, actual, pass) {
+    if (group !== currentGroup) {
+      currentGroup = group;
+      appendGroupRow(group);
+    }
+    total++;
+    if (!pass) failed++;
+    var tr = document.createElement('tr');
+    tr.className = pass ? 'pass' : 'fail';
+    var cells = [String(name), String(expected), String(actual), pass ? '通过' : '失败'];
+    var cls = ['name', 'expected', 'actual', pass ? 'ok' : 'bad'];
+    cells.forEach(function (txt, i) {
+      var td = document.createElement('td');
+      td.textContent = txt;
+      td.className = cls[i];
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  }
+
+  function finishBanner() {
+    if (failed === 0) {
+      banner.className = 'banner green';
+      banner.textContent = '✔ 全部通过：' + total + '/' + total + ' 个用例通过';
+    } else {
+      banner.className = 'banner red';
+      banner.textContent = '✘ 存在失败：通过 ' + (total - failed) + '/' + total + '，失败 ' + failed;
+    }
+    summaryEl.textContent = '总计 ' + total + ' 个断言用例，通过 ' + (total - failed) + '，失败 ' + failed + '。';
+  }
+
+  function failAll(err) {
+    record('运行环境', '测试页能加载 index.html 并访问 window.XTR',
+      'iframe 加载成功且暴露 XTR',
+      '失败: ' + ((err && err.message) ? err.message : String(err)), false);
+  }
+
+  /* ---------------- iframe / XTR 就绪 ---------------- */
+
+  function iframeReady(fr) {
+    return new Promise(function (resolve) {
+      var done = false;
+      var fin = function () { if (!done) { done = true; resolve(); } };
+      fr.addEventListener('load', fin, { once: true });
+      setTimeout(fin, 5000);
+    });
+  }
+
+  function waitForXTR(fr, timeout) {
+    return new Promise(function (resolve, reject) {
+      var start = Date.now();
+      (function tick() {
+        var w = null;
+        try { w = fr.contentWindow; } catch (e) { /* 跨源访问被拒 */ }
+        var has = false;
+        try { has = !!(w && w.XTR); } catch (e) { /* 跨源访问被拒 */ }
+        if (has) return resolve(w.XTR);
+        if (Date.now() - start > timeout) {
+          return reject(new Error('等待 iframe 内 window.XTR 超时（' + timeout + 'ms）。若以 file:// 打开，请改用本地静态服务器，例如 python -m http.server'));
+        }
+        setTimeout(tick, 50);
+      })();
+    });
+  }
+
+  /* ---------------- 1. model 组 ---------------- */
+
+  function unwrapNormalize(res) {
+    if (res && typeof res === 'object' && !Array.isArray(res)) {
+      if (res.doc && typeof res.doc === 'object' && res.unknown !== undefined) {
+        return { norm: res.doc, unknown: res.unknown };
+      }
+      if (res.normalized && typeof res.normalized === 'object') {
+        return { norm: res.normalized, unknown: res.unknown };
+      }
+      if (res.document && typeof res.document === 'object') {
+        return { norm: res.document, unknown: res.unknown };
+      }
+    }
+    var unknown;
+    if (res && typeof res === 'object' && !Array.isArray(res)) {
+      unknown = res._unknown !== undefined ? res._unknown : res.unknown;
+    }
+    return { norm: res, unknown: unknown };
+  }
+
+  function unknownHas(u, key) {
+    if (u === null || u === undefined) return false;
+    if (Array.isArray(u)) {
+      return u.some(function (x) { return x === key || (x && typeof x === 'object' && (x.key === key || x.name === key)); });
+    }
+    if (typeof u === 'object') return Object.prototype.hasOwnProperty.call(u, key);
+    return false;
+  }
+
+  function runModelTests(XTR) {
+    var group = 'model';
+    var M = XTR.model;
+    if (!M) {
+      record(group, 'XTR.model 命名空间', '存在', '缺失', false);
+      return;
+    }
+
+    // genId 去重
+    (function () {
+      var ids = [];
+      var pass = true;
+      var actual = '';
+      try {
+        for (var i = 0; i < 500; i++) ids.push(M.genId());
+        var unique = new Set(ids);
+        pass = ids.length === 500 && unique.size === 500 &&
+          ids.every(function (s) { return typeof s === 'string' && s.length > 0; });
+        actual = '生成 ' + ids.length + ' 个，去重后 ' + unique.size + ' 个';
+      } catch (e) {
+        pass = false;
+        actual = '异常: ' + e.message;
+      }
+      record(group, 'genId：连续生成 500 个 id 全部唯一且非空',
+        '500 个唯一非空字符串', actual, pass);
+    })();
+
+    // normalize 补默认值与 _unknown 收集
+    (function () {
+      var input = {
+        kind: 'pipeline',
+        meta: { name: 'normalize 测试' },
+        runtime: { output_dir: 'out', extraRuntime: 'x' },
+        unknownTop: 1,
+        nodes: [],
+        edges: []
+      };
+      var expected, actual, pass;
+      try {
+        var res = M.normalize(input);
+        var r = unwrapNormalize(res);
+        var norm = r.norm || {};
+        var unknown = r.unknown;
+        var c1 = norm.kind === 'pipeline';
+        var c2 = Array.isArray(norm.nodes);
+        var c3 = Array.isArray(norm.edges);
+        var c4 = !!norm.runtime && typeof norm.runtime === 'object';
+        var c5 = typeof norm.schema_version === 'string' && norm.schema_version.length > 0;
+        var c6 = unknownHas(unknown, 'unknownTop');
+        pass = c1 && c2 && c3 && c4 && c5 && c6;
+        expected = 'kind=pipeline；nodes=[]；edges=[]；runtime=对象；schema_version=非空字符串；_unknown 收集 unknownTop';
+        actual = 'kind=' + safeStr(norm.kind) +
+          '；nodes=' + (c2 ? '[]' : typeof norm.nodes) +
+          '；edges=' + (c3 ? '[]' : typeof norm.edges) +
+          '；runtime=' + (norm.runtime === undefined ? 'undefined' : typeof norm.runtime) +
+          '；schema_version=' + (c5 ? safeStr(norm.schema_version) : typeof norm.schema_version) +
+          '；_unknown=' + (c6 ? '已收集 unknownTop' : '未收集(' + safeStr(unknown) + ')');
+      } catch (e) {
+        pass = false;
+        expected = '返回补全默认值后的文档，未知字段收集进 _unknown';
+        actual = '异常: ' + e.message;
+      }
+      record(group, 'normalize：补默认值与 _unknown 收集', expected, actual, pass);
+    })();
+
+    // serialize 输出可被 JSON.parse 往返
+    (function () {
+      var doc = {
+        schema_version: '1.0.0',
+        kind: 'pipeline',
+        meta: { name: '序列化测试' },
+        runtime: { output_dir: 'out' },
+        nodes: [],
+        edges: []
+      };
+      var expected = '字符串可被 JSON.parse，二次序列化往返一致，关键字段保留';
+      var actual, pass;
+      try {
+        var s = M.serialize(doc);
+        var parsed = JSON.parse(s);
+        var s2 = M.serialize(parsed);
+        var parsed2 = JSON.parse(s2);
+        var roundOk = canon(parsed) === canon(parsed2);
+        var keepOk = parsed.kind === 'pipeline' && parsed.meta && parsed.meta.name === '序列化测试' &&
+          Array.isArray(parsed.nodes) && Array.isArray(parsed.edges);
+        pass = typeof s === 'string' && roundOk && keepOk;
+        actual = '可解析=true；二次序列化往返一致=' + roundOk + '；关键字段保留=' + keepOk;
+      } catch (e) {
+        pass = false;
+        actual = '异常: ' + e.message;
+      }
+      record(group, 'serialize：输出可被 JSON.parse 且往返一致', expected, actual, pass);
+    })();
+
+    // extractPromptVars
+    (function () {
+      var toName = function (v) {
+        if (typeof v === 'string') return v;
+        if (v && typeof v === 'object') {
+          if (v.name !== undefined) return String(v.name);
+          if (v.key !== undefined) return String(v.key);
+        }
+        return String(v);
+      };
+      var varsOf = function (t) {
+        var r = M.extractPromptVars(t);
+        return (r || []).map(toName).sort();
+      };
+      var name = 'extractPromptVars：从 {{var}} 提取变量';
+
+      try {
+        var v1 = varsOf('你好 {{name}}，今天是 {{date}}');
+        var p1 = arraysEqual(v1, ['date', 'name']);
+        record(group, name + '（双变量）',
+          '["date","name"]', safeStr(v1), p1);
+
+        var v2 = varsOf('这段文本没有任何变量');
+        var p2 = Array.isArray(v2) && v2.length === 0;
+        record(group, name + '（无变量）',
+          '[]', safeStr(v2), p2);
+
+        var v3 = varsOf('{{a}} 出现两次 {{a}}');
+        var p3 = v3.length >= 1 && v3.every(function (x) { return x === 'a'; });
+        record(group, name + '（重复变量）',
+          '仅包含 a（允许去重）', safeStr(v3), p3);
+      } catch (e) {
+        record(group, name, '正确提取变量', '异常: ' + e.message, false);
+      }
+    })();
+  }
+
+  /* ---------------- 2. validate 组 ---------------- */
+
+  var SCHEMA_KEYWORD_WHITELIST = [
+    '$schema', '$id', 'definitions', 'comment',
+    'type', 'properties', 'items', 'additionalItems', 'required',
+    'additionalProperties', 'enum', 'const',
+    'pattern', 'minLength', 'maxLength',
+    'minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf',
+    'minItems', 'maxItems', 'uniqueItems', 'contains',
+    'minProperties', 'maxProperties', 'patternProperties', 'propertyNames', 'dependencies',
+    'if', 'then', 'else', 'allOf', 'anyOf', 'oneOf', 'not',
+    'format', 'title', 'description', 'default', 'examples', 'readOnly', 'writeOnly'
+  ];
+
+  function auditViolations(r) {
+    if (r instanceof Error) return [r.message];
+    if (Array.isArray(r)) {
+      return r.filter(function (x) {
+        if (typeof x === 'string') return SCHEMA_KEYWORD_WHITELIST.indexOf(x) === -1;
+        if (x && typeof x === 'object') return !(x.ok === true || x.allowed === true || x.valid === true);
+        return true;
+      });
+    }
+    if (r && typeof r === 'object') {
+      if (r.ok === true || r.valid === true || r.pass === true) return [];
+      if (Array.isArray(r.violations)) return r.violations;
+      if (Array.isArray(r.issues)) return r.issues;
+      if (Array.isArray(r.keywords)) {
+        return r.keywords.filter(function (k) { return SCHEMA_KEYWORD_WHITELIST.indexOf(k) === -1; });
+      }
+      if (r.ok === false || r.valid === false) return [r];
+      return [];
+    }
+    if (r === true || r === null || r === undefined) return [];
+    if (r === false) return ['audit 返回 false'];
+    return [String(r)];
+  }
+
+  function validateCall(V, doc, ref) {
+    var fn = resolveFn(V, ['validate', 'run', 'check', 'validateDoc', 'validateDocument', 'verify']);
+    if (!fn) throw new Error('未找到 XTR.validate 校验函数');
+    var attempts = [function () { return fn(doc, ref); }, function () { return fn(doc); }, function () { return fn(ref, doc); }];
+    var lastErr = null;
+    for (var i = 0; i < attempts.length; i++) {
+      try {
+        var r = attempts[i]();
+        if (r !== undefined && r !== null) return r;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error('校验函数无返回值');
+  }
+
+  function normalizeValidateResult(r) {
+    var valid = false;
+    if (r && typeof r === 'object') {
+      valid = r.valid !== undefined ? !!r.valid : (r.ok !== undefined ? !!r.ok : false);
+    } else {
+      valid = !!r;
+    }
+    var errors = (r && Array.isArray(r.errors)) ? r.errors : [];
+    var list = errors.map(function (e) {
+      var path = e.path !== undefined ? e.path :
+        (e.instancePath !== undefined ? e.instancePath : (e.dataPath !== undefined ? e.dataPath : ''));
+      var kw = e.keyword !== undefined ? e.keyword : '';
+      return String(path) + '|' + String(kw);
+    }).sort();
+    return { valid: valid, errorList: list };
+  }
+
+  function runValidateTests(XTR, data) {
+    var group = 'validate';
+    var V = XTR.validate;
+    if (!V) {
+      record(group, 'XTR.validate 命名空间', '存在', '缺失', false);
+      return;
+    }
+    var groups = (data && (Array.isArray(data.groups) ? data.groups : (Array.isArray(data) ? data : null))) || [];
+
+    groups.forEach(function (g, i) {
+      var name = g.name || ('validate #' + (i + 1));
+      var ref = g.schemaRef || (g.doc && g.doc.kind) || 'pipeline';
+      var expected, actual, pass;
+      var expErrors = (g.expect && Array.isArray(g.expect.errors) ? g.expect.errors : [])
+        .map(function (e) { return String(e.path) + '|' + String(e.keyword); }).sort();
+      expected = 'valid=' + (g.expect ? g.expect.valid : undefined) +
+        ' errors=[' + expErrors.join(', ') + ']';
+      try {
+        var r = validateCall(V, g.doc, ref);
+        var norm = normalizeValidateResult(r);
+        pass = norm.valid === !!(g.expect && g.expect.valid) && arraysEqual(norm.errorList, expErrors);
+        actual = 'valid=' + norm.valid + ' errors=[' + norm.errorList.join(', ') + ']';
+      } catch (e) {
+        pass = false;
+        actual = '异常: ' + e.message;
+      }
+      record(group, name, expected, actual, pass);
+    });
+
+    // schemaKeywordAudit：两份 Schema 不越界
+    (function () {
+      var expected = '无越界关键字';
+      if (typeof V.schemaKeywordAudit !== 'function') {
+        record(group, 'schemaKeywordAudit：两份 Schema 关键字不越界', expected, '未找到 XTR.validate.schemaKeywordAudit 函数', false);
+        return;
+      }
+      var actual, pass;
+      try {
+        var r = V.schemaKeywordAudit();
+        var violations = auditViolations(r);
+        pass = violations.length === 0;
+        actual = pass ? '无越界关键字' : ('越界 ' + violations.length + ' 项：' + safeStr(violations));
+      } catch (e) {
+        pass = false;
+        actual = '异常: ' + e.message;
+      }
+      record(group, 'schemaKeywordAudit：两份 Schema 关键字不越界', expected, actual, pass);
+    })();
+  }
+
+  /* ---------------- 3. compat 组 ---------------- */
+
+  function compatStatusOf(r) {
+    if (typeof r === 'string') return r;
+    if (r && typeof r === 'object' && typeof r.status === 'string') return r.status;
+    return r;
+  }
+
+  function compatCall(fn, input) {
+    var attempts = input === undefined
+      ? [undefined, {}, { $version: undefined }]
+      : [input, { $version: input }];
+    var lastErr = null;
+    var lastR;
+    for (var i = 0; i < attempts.length; i++) {
+      try {
+        var r = fn(attempts[i]);
+        if (r !== undefined && r !== null) return compatStatusOf(r);
+        lastR = r;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    if (lastErr) return '异常: ' + lastErr.message;
+    return compatStatusOf(lastR);
+  }
+
+  function runCompatTests(XTR, data) {
+    var group = 'compat';
+    var C = XTR.compat;
+    if (!C) {
+      record(group, 'XTR.compat 命名空间', '存在', '缺失', false);
+      return;
+    }
+    var fn = resolveFn(C, ['checkVersion', 'check', 'detect', 'classify', 'statusOf', 'versionStatus', 'versionCheck']);
+    if (!fn) {
+      record(group, '找到 XTR.compat 版本判定函数', '函数存在', '未找到（尝试了 checkVersion/check/detect/classify/statusOf/versionStatus）', false);
+      return;
+    }
+    var cases = (data && (Array.isArray(data.cases) ? data.cases : (Array.isArray(data.compat) ? data.compat : (Array.isArray(data) ? data : null)))) || [];
+    cases.forEach(function (c, i) {
+      var name = c.desc || ('compat #' + (i + 1));
+      var input = c.input === null ? undefined : c.input; // JSON 中 undefined 落盘为 null，按字段缺失处理
+      var expected = 'status=' + c.expectStatus;
+      var actual, pass;
+      try {
+        var status = compatCall(fn, input);
+        actual = 'status=' + String(status);
+        pass = status === c.expectStatus;
+      } catch (e) {
+        actual = '异常: ' + e.message;
+        pass = false;
+      }
+      record(group, name, expected, actual, pass);
+    });
+  }
+
+  /* ---------------- 4. graph 组 ---------------- */
+
+  function baseDoc(name) {
+    return {
+      schema_version: '1.0.0',
+      kind: 'pipeline',
+      meta: { name: name },
+      runtime: { output_dir: 'dist' },
+      nodes: [],
+      edges: []
+    };
+  }
+
+  function nodeInput(id) {
+    return { id: id, type: 'input', inputs: [], outputs: [{ id: 'out', type: 'text' }] };
+  }
+
+  function nodeModel(id) {
+    return {
+      id: id, type: 'model',
+      inputs: [{ id: 'in', type: 'text' }],
+      outputs: [{ id: 'out', type: 'text' }]
+    };
+  }
+
+  function edge(a, b) {
+    return { from: { node: a, port: 'out' }, to: { node: b, port: 'in' } };
+  }
+
+  function callCanConnect(G, doc, from, to) {
+    var fn = G.canConnect;
+    if (typeof fn !== 'function') throw new Error('未找到 XTR.graph.canConnect 函数');
+    var r;
+    try {
+      r = fn(doc, from, to);
+    } catch (e) {
+      r = fn(doc, from.node, from.port, to.node, to.port);
+    }
+    if (Array.isArray(r)) return { ok: !!r[0], reason: r[1] === undefined ? '' : String(r[1]) };
+    if (r && typeof r === 'object') return { ok: !!r.ok, reason: r.reason === undefined ? '' : String(r.reason) };
+    return { ok: !!r, reason: '' };
+  }
+
+  function cycleResult(G, doc) {
+    var fn = resolveFn(G, ['hasCycle', 'detectCycle', 'findCycle', 'hasLoop', 'isCyclic']);
+    if (!fn) throw new Error('未找到环检测函数（尝试了 hasCycle/detectCycle/findCycle/hasLoop/isCyclic）');
+    var r = fn(doc);
+    if (Array.isArray(r)) return r.length > 0;
+    return !!r;
+  }
+
+  function topoResult(G, doc) {
+    var fn = resolveFn(G, ['topoSort', 'topologicalSort', 'toposort', 'topo', 'sortNodes']);
+    if (!fn) throw new Error('未找到拓扑排序函数（尝试了 topoSort/topologicalSort/toposort/topo/sortNodes）');
+    var r = fn(doc);
+    if (Array.isArray(r)) return r;
+    if (r && Array.isArray(r.order)) return r.order;
+    if (r && Array.isArray(r.nodes)) return r.nodes.map(function (n) { return typeof n === 'string' ? n : n.id; });
+    return r;
+  }
+
+  function layoutResult(G, doc) {
+    var fn = resolveFn(G, ['autoLayout', 'applyLayout', 'layout']);
+    if (!fn) throw new Error('未找到 autoLayout 函数（尝试了 autoLayout/applyLayout/layout）');
+    var r = fn(doc);
+    var map = {};
+    function put(id, p) {
+      if (id === null || id === undefined) return;
+      var pos = p && p.position ? p.position : p;
+      if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') map[id] = pos;
+    }
+    if (Array.isArray(r)) {
+      r.forEach(function (n) {
+        if (typeof n === 'string') put(n, null);
+        else put(n.id, n.position || n);
+      });
+    } else if (r && typeof r === 'object') {
+      if (Array.isArray(r.nodes)) {
+        r.nodes.forEach(function (n) { put(n.id, n.position || n); });
+      } else {
+        Object.keys(r).forEach(function (k) { put(k, r[k]); });
+      }
+    }
+    return map;
+  }
+
+  function checkLayout(G, doc, colW, rowG) {
+    var pos = layoutResult(G, doc);
+    var nodeIds = (doc && Array.isArray(doc.nodes)) ? doc.nodes.map(function (n) { return n.id; }) : [];
+    var missing = nodeIds.filter(function (id) { return !pos[id]; });
+    if (missing.length) return { pass: false, detail: '缺少坐标: ' + missing.join(', ') };
+    var xs = Array.from(new Set(nodeIds.map(function (id) { return pos[id].x; }))).sort(function (a, b) { return a - b; });
+    var colDiffs = xs.slice(1).map(function (x, i) { return x - xs[i]; });
+    var colOk = xs.length <= 1 || colDiffs.every(function (d) { return d === colW; });
+    var rowOk = true;
+    var rowDiffs = [];
+    xs.forEach(function (x) {
+      var ys = nodeIds.filter(function (id) { return pos[id].x === x; })
+        .map(function (id) { return pos[id].y; }).sort(function (a, b) { return a - b; });
+      for (var i = 1; i < ys.length; i++) {
+        rowDiffs.push(ys[i] - ys[i - 1]);
+        if (ys[i] - ys[i - 1] !== rowG) rowOk = false;
+      }
+    });
+    return {
+      pass: colOk && rowOk,
+      detail: '列 x=[' + xs.join(', ') + ']，列差=[' + colDiffs.join(', ') + ']，行差=[' + rowDiffs.join(', ') + ']'
+    };
+  }
+
+  function runGraphTests(XTR, data) {
+    var group = 'graph';
+    var G = XTR.graph;
+    if (!G) {
+      record(group, 'XTR.graph 命名空间', '存在', '缺失', false);
+      return;
+    }
+    var sections = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+
+    // 4.1 canConnect 用例
+    var cc = Array.isArray(sections.canConnect) ? sections.canConnect : [];
+    if (data && !Array.isArray(sections.canConnect)) {
+      record(group, 'graph.cases.json 包含 canConnect 用例数组', 'canConnect 为数组',
+        '实际类型: ' + typeof sections.canConnect, false);
+    }
+    cc.forEach(function (c, i) {
+      var name = c.desc || ('canConnect #' + (i + 1));
+      var expected = 'ok=' + (c.expect && c.expect.ok);
+      if (c.expect && c.expect.reasonContains !== undefined) expected += '，reason 含“' + c.expect.reasonContains + '”';
+      if (c.expect && c.expect.reasonEquals !== undefined) expected += '，reason=' + JSON.stringify(c.expect.reasonEquals);
+      var actual, pass;
+      try {
+        var r = callCanConnect(G, c.doc, c.from, c.to);
+        var okPass = r.ok === !!(c.expect && c.expect.ok);
+        var reasonPass = true;
+        if (c.expect && c.expect.reasonContains !== undefined) {
+          reasonPass = typeof r.reason === 'string' && r.reason.indexOf(c.expect.reasonContains) !== -1;
+        }
+        if (c.expect && c.expect.reasonEquals !== undefined) {
+          reasonPass = r.reason === c.expect.reasonEquals;
+        }
+        pass = okPass && reasonPass;
+        actual = 'ok=' + r.ok + '，reason=' + JSON.stringify(r.reason);
+      } catch (e) {
+        pass = false;
+        actual = '异常: ' + e.message;
+      }
+      record(group, name, expected, actual, pass);
+    });
+
+    // 4.2 环检测
+    (function () {
+      var name1 = '环检测：n1→n2→n3→n2 存在环，应检出';
+      var name2 = '环检测：n1→n2、n1→n3 无环，应判定无环';
+      try {
+        var cycleDoc = baseDoc('环检测测试');
+        cycleDoc.nodes = [nodeInput('n1'), nodeModel('n2'), nodeModel('n3')];
+        cycleDoc.edges = [edge('n1', 'n2'), edge('n2', 'n3'), edge('n3', 'n2')];
+        var has = cycleResult(G, cycleDoc);
+        record(group, name1, 'true', String(has), has === true);
+
+        var acyclicDoc = baseDoc('无环测试');
+        acyclicDoc.nodes = [nodeInput('n1'), nodeModel('n2'), nodeModel('n3')];
+        acyclicDoc.edges = [edge('n1', 'n2'), edge('n1', 'n3')];
+        var no = cycleResult(G, acyclicDoc);
+        record(group, name2, 'false', String(no), no === false);
+      } catch (e) {
+        record(group, name1, 'true', '异常: ' + e.message, false);
+        record(group, name2, 'false', '异常: ' + e.message, false);
+      }
+    })();
+
+    // 4.3 拓扑排序
+    (function () {
+      var name = '拓扑排序：n1→n2→n4、n1→n3 的先后约束';
+      try {
+        var doc = baseDoc('拓扑排序测试');
+        doc.nodes = [nodeInput('n1'), nodeModel('n2'), nodeModel('n3'), nodeModel('n4')];
+        doc.edges = [edge('n1', 'n2'), edge('n1', 'n3'), edge('n2', 'n4')];
+        var order = topoResult(G, doc);
+        var pass = false;
+        var actual;
+        if (Array.isArray(order)) {
+          var idx = function (id) { return order.indexOf(id); };
+          pass = order.length === 4 && new Set(order).size === 4 &&
+            idx('n1') !== -1 && idx('n2') !== -1 && idx('n3') !== -1 && idx('n4') !== -1 &&
+            idx('n1') < idx('n2') && idx('n2') < idx('n4') && idx('n1') < idx('n3');
+          actual = '顺序: ' + order.join(' → ');
+        } else {
+          actual = String(order);
+        }
+        record(group, name, 'n1 在 n2/n3 之前，n2 在 n4 之前，包含全部 4 个节点', actual, pass);
+      } catch (e) {
+        record(group, name, '满足边先后约束的节点顺序', '异常: ' + e.message, false);
+      }
+    })();
+
+    // 4.4 autoLayout 列宽 320 / 行距 160
+    (function () {
+      var name = 'autoLayout：列宽 320 / 行距 160';
+      try {
+        var doc = baseDoc('自动布局测试');
+        doc.nodes = [nodeInput('n1'), nodeModel('n2'), nodeModel('n3'), nodeModel('n4')];
+        doc.edges = [edge('n1', 'n2'), edge('n1', 'n3'), edge('n2', 'n4')];
+        var res = checkLayout(G, doc, 320, 160);
+        record(group, name, '相邻列 x 差 320；同列相邻节点 y 差 160', res.detail, res.pass);
+      } catch (e) {
+        record(group, name, '相邻列 x 差 320；同列相邻节点 y 差 160', '异常: ' + e.message, false);
+      }
+    })();
+
+    // 4.5 若用例文件还包含环检测 / 拓扑 / 布局分节，则逐条遍历
+    ['cycle', 'hasCycle', 'cycles'].forEach(function (key) {
+      if (!Array.isArray(sections[key])) return;
+      sections[key].forEach(function (c, i) {
+        var name = c.desc || (key + ' #' + (i + 1));
+        try {
+          var exp = pick(c.expect || {}, ['cycle', 'hasCycle', 'value', 'expected'], null);
+          if (exp === null) {
+            record(group, name, 'expect 中提供期望值（cycle/hasCycle/value）', '缺少期望值', false);
+            return;
+          }
+          var has = cycleResult(G, c.doc);
+          record(group, name, '含环=' + exp, '含环=' + has, has === !!exp);
+        } catch (e) {
+          record(group, name, '正常执行', '异常: ' + e.message, false);
+        }
+      });
+    });
+
+    ['topoSort', 'topo', 'topologicalSort'].forEach(function (key) {
+      if (!Array.isArray(sections[key])) return;
+      sections[key].forEach(function (c, i) {
+        var name = c.desc || (key + ' #' + (i + 1));
+        try {
+          var order = topoResult(G, c.doc);
+          var nodeIds = (c.doc && Array.isArray(c.doc.nodes)) ? c.doc.nodes.map(function (n) { return n.id; }) : [];
+          var edges = (c.doc && Array.isArray(c.doc.edges)) ? c.doc.edges : [];
+          var structural = Array.isArray(order) && order.length === nodeIds.length &&
+            new Set(order).size === nodeIds.length &&
+            nodeIds.every(function (id) { return order.indexOf(id) !== -1; }) &&
+            edges.every(function (e) {
+              return order.indexOf(e.from && e.from.node) !== -1 &&
+                order.indexOf(e.from.node) < order.indexOf(e.to.node);
+            });
+          var expectedOrder = pick(c.expect || {}, ['order', 'sequence', 'expected'], null);
+          var exact = Array.isArray(expectedOrder) ? arraysEqual(order, expectedOrder) : true;
+          var pass = structural && exact;
+          var expected = Array.isArray(expectedOrder)
+            ? '顺序=' + expectedOrder.join(' → ')
+            : '满足边先后约束且包含全部节点';
+          var actual = '顺序=' + (Array.isArray(order) ? order.join(' → ') : String(order));
+          record(group, name, expected, actual, pass);
+        } catch (e) {
+          record(group, name, '正常执行', '异常: ' + e.message, false);
+        }
+      });
+    });
+
+    ['autoLayout', 'layout'].forEach(function (key) {
+      if (!Array.isArray(sections[key])) return;
+      sections[key].forEach(function (c, i) {
+        var name = c.desc || (key + ' #' + (i + 1));
+        try {
+          var exp = c.expect || {};
+          var colW = pick(exp, ['colWidth', 'columnWidth'], 320);
+          var rowG = pick(exp, ['rowGap', 'rowHeight', 'rowSpacing'], 160);
+          var res = checkLayout(G, c.doc, colW, rowG);
+          record(group, name, '列宽=' + colW + '，行距=' + rowG, res.detail, res.pass);
+        } catch (e) {
+          record(group, name, '正常执行', '异常: ' + e.message, false);
+        }
+      });
+    });
+  }
+
+  /* ---------------- 5. schema 等价性 ---------------- */
+
+  async function loadSchemaCopy(name) {
+    var el = document.getElementById('inline-schema-' + name);
+    if (el && el.textContent && el.textContent.trim()) {
+      return JSON.parse(el.textContent);
+    }
+    return await fetchJSON('../schema/' + name + '.schema.json');
+  }
+
+  async function runSchemaEquivTests(XTR) {
+    var group = 'schema 等价性';
+    var V = XTR.validate;
+    var names = ['pipeline', 'layout'];
+    for (var i = 0; i < names.length; i++) {
+      var name = names[i];
+      var caseName = 'XTR.validate.SCHEMA.' + name + ' 与 ../schema/' + name + '.schema.json 规范化（键排序）后逐字符相等';
+      var expected = '规范化后逐字符相等';
+      var actual, pass;
+      try {
+        if (!V || !V.SCHEMA || !V.SCHEMA[name]) {
+          record(group, caseName, expected, 'XTR.validate.SCHEMA.' + name + ' 不可访问', false);
+          continue;
+        }
+        var copy;
+        try {
+          copy = await loadSchemaCopy(name);
+        } catch (e) {
+          record(group, caseName, expected, '加载内联/fetched 副本失败: ' + e.message, false);
+          continue;
+        }
+        var a = canon(V.SCHEMA[name]);
+        var b = canon(copy);
+        pass = a === b;
+        actual = pass
+          ? '相等（规范化长度 ' + a.length + ' 字符）'
+          : '存在差异：首个差异位置 ' + firstDiffIndex(a, b) +
+            '，运行时片段……' + a.substr(Math.max(0, firstDiffIndex(a, b) - 20), 60) +
+            '，副本片段……' + b.substr(Math.max(0, firstDiffIndex(a, b) - 20), 60);
+      } catch (e) {
+        pass = false;
+        actual = '异常: ' + e.message;
+      }
+      record(group, caseName, expected, actual, pass);
+    }
+  }
+
+  /* ---------------- 6. io 纯函数 ---------------- */
+
+  function runIoTests(XTR) {
+    var group = 'io';
+    var IO = XTR.io || XTR.IO;
+    if (!IO) {
+      record(group, 'XTR.io 命名空间', '存在', '缺失', false);
+      return;
+    }
+
+    // safeFilename
+    (function () {
+      var bad = 'a/b\\c:d*e?f"g<h>i|j';
+      var expected = '不含 /\\:*?"<>| 的非空字符串';
+      var actual, pass;
+      try {
+        var out = IO.safeFilename(bad);
+        pass = typeof out === 'string' && out.length > 0 && !/[\/\\:*?"<>|]/.test(out);
+        actual = JSON.stringify(out);
+      } catch (e) {
+        pass = false;
+        actual = '异常: ' + e.message;
+      }
+      record(group, 'safeFilename：替换 /\\:*?"<>| 等非法字符', expected, actual, pass);
+    })();
+
+    (function () {
+      var chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
+      var expected = '每个非法字符（x?y 形式）均被替换，输出不含任何非法字符';
+      var actual, pass;
+      try {
+        var outs = chars.map(function (ch) { return IO.safeFilename('x' + ch + 'y'); });
+        pass = outs.every(function (s, i) {
+          return typeof s === 'string' && s.indexOf(chars[i]) === -1;
+        });
+        actual = safeStr(outs);
+      } catch (e) {
+        pass = false;
+        actual = '异常: ' + e.message;
+      }
+      record(group, 'safeFilename：逐字符替换校验', expected, actual, pass);
+    })();
+
+    // detectKind
+    (function () {
+      if (typeof IO.detectKind !== 'function') {
+        record(group, 'detectKind：kind 缺失/错误值分支', 'XTR.io.detectKind 可用', '未找到该函数', false);
+        return;
+      }
+      var pipelineLike = {
+        schema_version: '1.0.0',
+        meta: { name: 'x' },
+        runtime: { output_dir: 'out' },
+        nodes: [],
+        edges: []
+      };
+      var layoutLike = {
+        schema_version: '0.1.0',
+        meta: { name: 'x' },
+        viewport: { x: 0, y: 0, zoom: 1 },
+        canvas: { grid: { size: 20, visible: true } },
+        nodes: [{ id: 'n1', x: 0, y: 0 }]
+      };
+      function kindOf(r) {
+        if (typeof r === 'string') return r;
+        if (r && typeof r === 'object' && r.kind !== undefined) return r.kind;
+        return r;
+      }
+      function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+      var cases = [
+        {
+          name: 'detectKind：显式 kind=pipeline',
+          doc: (function () { var d = clone(pipelineLike); d.kind = 'pipeline'; return d; })(),
+          expected: 'pipeline'
+        },
+        {
+          name: 'detectKind：kind 缺失但结构为管线（nodes/edges）',
+          doc: clone(pipelineLike),
+          expected: 'pipeline'
+        },
+        {
+          name: 'detectKind：kind 缺失但结构为布局（viewport/canvas）',
+          doc: clone(layoutLike),
+          expected: 'layout'
+        },
+        {
+          name: 'detectKind：kind 错误值 flow 且结构为管线，应回退推断',
+          doc: (function () { var d = clone(pipelineLike); d.kind = 'flow'; return d; })(),
+          expected: 'pipeline'
+        },
+        {
+          name: 'detectKind：kind 错误值 flow 且结构为布局，应回退推断',
+          doc: (function () { var d = clone(layoutLike); d.kind = 'flow'; return d; })(),
+          expected: 'layout'
+        }
+      ];
+
+      cases.forEach(function (c) {
+        var actual, pass;
+        try {
+          var r = kindOf(IO.detectKind(c.doc));
+          actual = String(r);
+          pass = r === c.expected;
+        } catch (e) {
+          actual = '异常: ' + e.message;
+          pass = false;
+        }
+        record(group, c.name, c.expected, actual, pass);
+      });
+    })();
+  }
+
+  /* ---------------- 主流程 ---------------- */
+
+  (async function main() {
+    try {
+      await iframeReady(iframe);
+      var XTR = await waitForXTR(iframe, 15000);
+
+      var validateData, compatData, graphData;
+      var vErr = null, cErr = null, gErr = null;
+      await Promise.all([
+        fetchJSON('cases/validate.cases.json').then(function (d) { validateData = d; }, function (e) { vErr = e; }),
+        fetchJSON('cases/compat.cases.json').then(function (d) { compatData = d; }, function (e) { cErr = e; }),
+        fetchJSON('cases/graph.cases.json').then(function (d) { graphData = d; }, function (e) { gErr = e; })
+      ]);
+
+      runModelTests(XTR);
+
+      if (vErr) {
+        record('validate', '加载 cases/validate.cases.json', '加载成功',
+          '失败: ' + vErr.message + '（请通过本地静态服务器访问，如 python -m http.server）', false);
+      } else {
+        runValidateTests(XTR, validateData);
+      }
+
+      if (cErr) {
+        record('compat', '加载 cases/compat.cases.json', '加载成功', '失败: ' + cErr.message, false);
+      } else {
+        runCompatTests(XTR, compatData);
+      }
+
+      if (gErr) {
+        record('graph', '加载 cases/graph.cases.json', '加载成功', '失败: ' + gErr.message, false);
+      } else {
+        runGraphTests(XTR, graphData);
+      }
+
+      await runSchemaEquivTests(XTR);
+
+      runIoTests(XTR);
+    } catch (e) {
+      failAll(e);
+    }
+    finishBanner();
+  })();
+
+})();
+</script>
+
+</body>
+</html>

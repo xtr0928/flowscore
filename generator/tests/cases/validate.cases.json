@@ -1,0 +1,1118 @@
+{
+  "groups": [
+    {
+      "name": "pipeline.valid.baseline",
+      "schemaRef": "pipeline",
+      "doc": {
+        "schema_version": "1.2.0",
+        "kind": "pipeline",
+        "meta": {
+          "name": "demo",
+          "description": "基础合法管线",
+          "version": "1.0.0",
+          "author": "tester"
+        },
+        "runtime": {
+          "output_dir": "out",
+          "concurrency": 2,
+          "continue_on_error": false
+        },
+        "nodes": [],
+        "edges": []
+      },
+      "expect": {
+        "valid": true,
+        "errors": []
+      }
+    },
+    {
+      "name": "pipeline.type.nodes-not-array",
+      "schemaRef": "pipeline",
+      "doc": {
+        "schema_version": "1.2.0",
+        "kind": "pipeline",
+        "meta": {
+          "name": "demo"
+        },
+        "runtime": {
+          "output_dir": "out"
+        },
+        "nodes": {
+          "n1": {}
+        },
+        "edges": []
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/nodes",
+            "keyword": "type"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pipeline.required.kind-missing",
+      "schemaRef": "pipeline",
+      "doc": {
+        "schema_version": "1.2.0",
+        "meta": {
+          "name": "demo"
+        },
+        "runtime": {
+          "output_dir": "out"
+        },
+        "nodes": [],
+        "edges": []
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "",
+            "keyword": "required"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pipeline.const.kind-wrong",
+      "schemaRef": "pipeline",
+      "doc": {
+        "schema_version": "1.2.0",
+        "kind": "flow",
+        "meta": {
+          "name": "demo"
+        },
+        "runtime": {
+          "output_dir": "out"
+        },
+        "nodes": [],
+        "edges": []
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/kind",
+            "keyword": "const"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pipeline.pattern.schema-version",
+      "schemaRef": "pipeline",
+      "doc": {
+        "schema_version": "1.0",
+        "kind": "pipeline",
+        "meta": {
+          "name": "demo"
+        },
+        "runtime": {
+          "output_dir": "out"
+        },
+        "nodes": [],
+        "edges": []
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/schema_version",
+            "keyword": "pattern"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pipeline.minLength.meta-name",
+      "schemaRef": "pipeline",
+      "doc": {
+        "schema_version": "1.2.0",
+        "kind": "pipeline",
+        "meta": {
+          "name": ""
+        },
+        "runtime": {
+          "output_dir": "out"
+        },
+        "nodes": [],
+        "edges": []
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/meta/name",
+            "keyword": "minLength"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pipeline.additionalProperties.root-extra",
+      "schemaRef": "pipeline",
+      "doc": {
+        "schema_version": "1.2.0",
+        "kind": "pipeline",
+        "meta": {
+          "name": "demo"
+        },
+        "runtime": {
+          "output_dir": "out"
+        },
+        "nodes": [],
+        "edges": [],
+        "extra": 1
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "",
+            "keyword": "additionalProperties"
+          }
+        ]
+      }
+    },
+    {
+      "name": "layout.valid.baseline",
+      "schemaRef": "layout",
+      "doc": {
+        "schema_version": "0.1.0",
+        "kind": "layout",
+        "meta": {
+          "name": "demo"
+        },
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "zoom": 1
+        },
+        "canvas": {
+          "grid": {
+            "size": 20,
+            "visible": true
+          },
+          "background": "#ffffff"
+        },
+        "nodes": {
+          "n1": {
+            "x": 10,
+            "y": 20,
+            "w": 200,
+            "h": 80,
+            "collapsed": false,
+            "color": null,
+            "z": 1
+          }
+        },
+        "edges": {
+          "e1": {
+            "color": "#333333",
+            "waypoints": [
+              {
+                "x": 1,
+                "y": 2
+              },
+              {
+                "x": 3,
+                "y": 4
+              }
+            ]
+          }
+        }
+      },
+      "expect": {
+        "valid": true,
+        "errors": []
+      }
+    },
+    {
+      "name": "layout.required.canvas-grid-missing",
+      "schemaRef": "layout",
+      "doc": {
+        "schema_version": "0.1.0",
+        "kind": "layout",
+        "meta": {},
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "zoom": 1
+        },
+        "canvas": {
+          "background": "#ffffff"
+        },
+        "nodes": {}
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/canvas",
+            "keyword": "required"
+          }
+        ]
+      }
+    },
+    {
+      "name": "layout.minimum.viewport-zoom",
+      "schemaRef": "layout",
+      "doc": {
+        "schema_version": "0.1.0",
+        "kind": "layout",
+        "meta": {},
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "zoom": 0.1
+        },
+        "canvas": {
+          "grid": {
+            "size": 20,
+            "visible": true
+          },
+          "background": "#ffffff"
+        },
+        "nodes": {}
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/viewport/zoom",
+            "keyword": "minimum"
+          }
+        ]
+      }
+    },
+    {
+      "name": "layout.maximum.viewport-zoom",
+      "schemaRef": "layout",
+      "doc": {
+        "schema_version": "0.1.0",
+        "kind": "layout",
+        "meta": {},
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "zoom": 3
+        },
+        "canvas": {
+          "grid": {
+            "size": 20,
+            "visible": true
+          },
+          "background": "#ffffff"
+        },
+        "nodes": {}
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/viewport/zoom",
+            "keyword": "maximum"
+          }
+        ]
+      }
+    },
+    {
+      "name": "layout.minimum.grid-size",
+      "schemaRef": "layout",
+      "doc": {
+        "schema_version": "0.1.0",
+        "kind": "layout",
+        "meta": {},
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "zoom": 1
+        },
+        "canvas": {
+          "grid": {
+            "size": 2,
+            "visible": true
+          },
+          "background": "#ffffff"
+        },
+        "nodes": {}
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/canvas/grid/size",
+            "keyword": "minimum"
+          }
+        ]
+      }
+    },
+    {
+      "name": "layout.type.background-number",
+      "schemaRef": "layout",
+      "doc": {
+        "schema_version": "0.1.0",
+        "kind": "layout",
+        "meta": {},
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "zoom": 1
+        },
+        "canvas": {
+          "grid": {
+            "size": 20,
+            "visible": true
+          },
+          "background": 5
+        },
+        "nodes": {}
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/canvas/background",
+            "keyword": "type"
+          }
+        ]
+      }
+    },
+    {
+      "name": "layout.type.node-color-not-string-or-null",
+      "schemaRef": "layout",
+      "doc": {
+        "schema_version": "0.1.0",
+        "kind": "layout",
+        "meta": {},
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "zoom": 1
+        },
+        "canvas": {
+          "grid": {
+            "size": 20,
+            "visible": true
+          },
+          "background": "#ffffff"
+        },
+        "nodes": {
+          "n1": {
+            "x": 10,
+            "y": 20,
+            "color": 5
+          }
+        }
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/nodes/n1/color",
+            "keyword": "type"
+          }
+        ]
+      }
+    },
+    {
+      "name": "layout.additionalProperties.node-extra",
+      "schemaRef": "layout",
+      "doc": {
+        "schema_version": "0.1.0",
+        "kind": "layout",
+        "meta": {},
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "zoom": 1
+        },
+        "canvas": {
+          "grid": {
+            "size": 20,
+            "visible": true
+          },
+          "background": "#ffffff"
+        },
+        "nodes": {
+          "n1": {
+            "x": 10,
+            "y": 20,
+            "foo": 1
+          }
+        }
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/nodes/n1",
+            "keyword": "additionalProperties"
+          }
+        ]
+      }
+    },
+    {
+      "name": "layout.items.waypoint-type",
+      "schemaRef": "layout",
+      "doc": {
+        "schema_version": "0.1.0",
+        "kind": "layout",
+        "meta": {},
+        "viewport": {
+          "x": 0,
+          "y": 0,
+          "zoom": 1
+        },
+        "canvas": {
+          "grid": {
+            "size": 20,
+            "visible": true
+          },
+          "background": "#ffffff"
+        },
+        "nodes": {},
+        "edges": {
+          "e1": {
+            "waypoints": [
+              {
+                "x": 1,
+                "y": 2
+              },
+              [
+                3,
+                4
+              ]
+            ]
+          }
+        }
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/edges/e1/waypoints/1",
+            "keyword": "type"
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline.enum.level-invalid",
+      "schemaRef": "inline",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": [
+          "level"
+        ],
+        "properties": {
+          "level": {
+            "enum": [
+              "low",
+              "mid",
+              "high"
+            ]
+          }
+        }
+      },
+      "doc": {
+        "level": "ultra"
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/level",
+            "keyword": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline.string-length.min-and-max",
+      "schemaRef": "inline",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": [
+          "short",
+          "code"
+        ],
+        "properties": {
+          "short": {
+            "type": "string",
+            "minLength": 2
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 4
+          }
+        }
+      },
+      "doc": {
+        "short": "a",
+        "code": "ABCDE"
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/short",
+            "keyword": "minLength"
+          },
+          {
+            "path": "/code",
+            "keyword": "maxLength"
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline.minItems.tags-empty",
+      "schemaRef": "inline",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": [
+          "tags"
+        ],
+        "properties": {
+          "tags": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 3,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "doc": {
+        "tags": []
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/tags",
+            "keyword": "minItems"
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline.maxItems.tags-overflow",
+      "schemaRef": "inline",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": [
+          "tags"
+        ],
+        "properties": {
+          "tags": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 3,
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "doc": {
+        "tags": [
+          "a",
+          "b",
+          "c",
+          "d"
+        ]
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/tags",
+            "keyword": "maxItems"
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline.items.element-type-mismatch",
+      "schemaRef": "inline",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": [
+          "tags"
+        ],
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "doc": {
+        "tags": [
+          "one",
+          2
+        ]
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/tags/1",
+            "keyword": "type"
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline.oneOf.valid-type-discriminator",
+      "schemaRef": "inline",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": [
+          "payload"
+        ],
+        "properties": {
+          "payload": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": [
+                  "n"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "n": {
+                    "type": "number"
+                  }
+                }
+              },
+              {
+                "type": "string",
+                "minLength": 1
+              }
+            ]
+          }
+        }
+      },
+      "doc": {
+        "payload": {
+          "n": 1
+        }
+      },
+      "expect": {
+        "valid": true,
+        "errors": []
+      }
+    },
+    {
+      "name": "inline.oneOf.no-branch-match",
+      "schemaRef": "inline",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": [
+          "payload"
+        ],
+        "properties": {
+          "payload": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": [
+                  "n"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "n": {
+                    "type": "number"
+                  }
+                }
+              },
+              {
+                "type": "string",
+                "minLength": 1
+              }
+            ]
+          }
+        }
+      },
+      "doc": {
+        "payload": 123
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/payload",
+            "keyword": "oneOf"
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline.oneOf.multiple-branch-match",
+      "schemaRef": "inline",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": [
+          "payload"
+        ],
+        "properties": {
+          "payload": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": [
+                  "n"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "n": {
+                    "type": "number"
+                  }
+                }
+              },
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "string",
+                "pattern": "^[A-Z]{2}$"
+              }
+            ]
+          }
+        }
+      },
+      "doc": {
+        "payload": "AB"
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/payload",
+            "keyword": "oneOf"
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline.anyOf.valid",
+      "schemaRef": "inline",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "properties": {
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          }
+        }
+      },
+      "doc": {
+        "mode": "fast"
+      },
+      "expect": {
+        "valid": true,
+        "errors": []
+      }
+    },
+    {
+      "name": "inline.anyOf.no-branch-match",
+      "schemaRef": "inline",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": [
+          "mode"
+        ],
+        "properties": {
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          }
+        }
+      },
+      "doc": {
+        "mode": true
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/mode",
+            "keyword": "anyOf"
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline.allOf.valid",
+      "schemaRef": "inline",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": [
+          "shape"
+        ],
+        "properties": {
+          "shape": {
+            "allOf": [
+              {
+                "type": "object"
+              },
+              {
+                "required": [
+                  "sides"
+                ]
+              },
+              {
+                "properties": {
+                  "sides": {
+                    "type": "integer",
+                    "minimum": 3,
+                    "maximum": 12
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "doc": {
+        "shape": {
+          "sides": 6
+        }
+      },
+      "expect": {
+        "valid": true,
+        "errors": []
+      }
+    },
+    {
+      "name": "inline.allOf.subschema-violated",
+      "schemaRef": "inline",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": [
+          "shape"
+        ],
+        "properties": {
+          "shape": {
+            "allOf": [
+              {
+                "type": "object"
+              },
+              {
+                "required": [
+                  "sides"
+                ]
+              },
+              {
+                "properties": {
+                  "sides": {
+                    "type": "integer",
+                    "minimum": 3,
+                    "maximum": 12
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "doc": {
+        "shape": {
+          "sides": 2
+        }
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/shape/sides",
+            "keyword": "minimum"
+          }
+        ]
+      }
+    },
+    {
+      "name": "inline.ref.local.valid",
+      "schemaRef": "inline",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "thing": {
+            "$ref": "#/$defs/thing"
+          }
+        },
+        "$defs": {
+          "thing": {
+            "type": "string",
+            "minLength": 2
+          }
+        }
+      },
+      "doc": {
+        "thing": "ok"
+      },
+      "expect": {
+        "valid": true,
+        "errors": []
+      }
+    },
+    {
+      "name": "inline.ref.local.invalid",
+      "schemaRef": "inline",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "thing": {
+            "$ref": "#/$defs/thing"
+          }
+        },
+        "$defs": {
+          "thing": {
+            "type": "string",
+            "minLength": 2
+          }
+        }
+      },
+      "doc": {
+        "thing": "x"
+      },
+      "expect": {
+        "valid": false,
+        "errors": [
+          {
+            "path": "/thing",
+            "keyword": "minLength"
+          }
+        ]
+      }
+    },
+    {
+      "name": "schemaKeywordAudit",
+      "schemaRef": "inline",
+      "schema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "required": [
+          "schemas",
+          "audit"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "schemas": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "audit": {
+            "type": "object",
+            "required": [
+              "recursive",
+              "forbiddenKeywords",
+              "forbidRemoteRefs"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "recursive": {
+                "const": true
+              },
+              "forbiddenKeywords": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "enum": [
+                    "if",
+                    "then",
+                    "else",
+                    "patternProperties",
+                    "dependencies",
+                    "unevaluatedProperties"
+                  ]
+                }
+              },
+              "forbidRemoteRefs": {
+                "const": true
+              }
+            }
+          }
+        }
+      },
+      "doc": {
+        "schemas": [
+          {
+            "path": "schema/pipeline.schema.json"
+          },
+          {
+            "path": "schema/layout.schema.json"
+          }
+        ],
+        "audit": {
+          "recursive": true,
+          "forbiddenKeywords": [
+            "if",
+            "then",
+            "else",
+            "patternProperties",
+            "dependencies",
+            "unevaluatedProperties"
+          ],
+          "forbidRemoteRefs": true
+        }
+      },
+      "expect": {
+        "valid": true,
+        "errors": []
+      }
+    }
+  ]
+}

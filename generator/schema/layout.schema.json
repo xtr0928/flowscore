@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/xtr/layout.schema.json",
+  "title": "XTR Layout Schema",
+  "description": "布局文件的权威 JSON Schema。本文件同时作为 index.html 内联常量 XTR.validate.SCHEMA.layout 的唯一来源；本 Schema 只承载布局信息，不得包含任何节点业务配置字段（F4.4 契约级保障）。",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "meta",
+    "viewport",
+    "canvas",
+    "nodes"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "布局文件的 schema 版本号。"
+    },
+    "kind": {
+      "const": "layout",
+      "description": "文件类型标识，固定为 layout。"
+    },
+    "meta": {
+      "type": "object",
+      "description": "布局元信息。",
+      "additionalProperties": true
+    },
+    "viewport": {
+      "type": "object",
+      "description": "视口状态。",
+      "required": [
+        "x",
+        "y",
+        "zoom"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "视口横向偏移。"
+        },
+        "y": {
+          "type": "number",
+          "description": "视口纵向偏移。"
+        },
+        "zoom": {
+          "type": "number",
+          "minimum": 0.25,
+          "maximum": 2.5,
+          "description": "缩放倍率，范围 [0.25, 2.5]。"
+        }
+      }
+    },
+    "canvas": {
+      "type": "object",
+      "description": "画布设置。",
+      "required": [
+        "grid",
+        "background"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "grid": {
+          "type": "object",
+          "description": "网格设置。",
+          "required": [
+            "size",
+            "visible"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "size": {
+              "type": "number",
+              "minimum": 4,
+              "default": 20,
+              "description": "网格尺寸，最小 4，默认 20。"
+            },
+            "visible": {
+              "type": "boolean",
+              "description": "网格是否可见。"
+            }
+          }
+        },
+        "background": {
+          "type": "string",
+          "description": "画布背景。"
+        }
+      }
+    },
+    "nodes": {
+      "type": "object",
+      "description": "节点记录表，键为任意 node.id。",
+      "additionalProperties": {
+        "type": "object",
+        "description": "单个节点的布局记录。",
+        "required": [
+          "x",
+          "y"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "x": {
+            "type": "number",
+            "description": "节点横向坐标。"
+          },
+          "y": {
+            "type": "number",
+            "description": "节点纵向坐标。"
+          },
+          "w": {
+            "type": "number",
+            "description": "节点宽度。"
+          },
+          "h": {
+            "type": "number",
+            "description": "节点高度。"
+          },
+          "collapsed": {
+            "type": "boolean",
+            "description": "节点是否折叠。"
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "节点颜色，允许 null 表示未设置。"
+          },
+          "z": {
+            "type": "number",
+            "description": "节点堆叠层级。"
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "object",
+      "description": "连线记录表，键为任意 edge 标识，非必填。",
+      "additionalProperties": {
+        "type": "object",
+        "description": "单条连线的布局记录。",
+        "additionalProperties": false,
+        "properties": {
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "连线颜色，允许 null 表示未设置。"
+          },
+          "waypoints": {
+            "type": "array",
+            "description": "连线途经点列表。",
+            "items": {
+              "type": "object",
+              "description": "单个途经点。",
+              "required": [
+                "x",
+                "y"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "x": {
+                  "type": "number",
+                  "description": "途经点横向坐标。"
+                },
+                "y": {
+                  "type": "number",
+                  "description": "途经点纵向坐标。"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "groups": {
+      "type": "array",
+      "description": "分组区域（Schema 预留，当前不含 UI 创建入口）。",
+      "items": {
+        "type": "object",
+        "description": "单个分组区域。",
+        "required": [
+          "id",
+          "title",
+          "members",
+          "x",
+          "y",
+          "w",
+          "h",
+          "color"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "分组唯一标识。"
+          },
+          "title": {
+            "type": "string",
+            "description": "分组标题。"
+          },
+          "members": {
+            "type": "array",
+            "description": "分组成员的 node.id 列表。",
+            "items": {
+              "type": "string"
+            }
+          },
+          "x": {
+            "type": "number",
+            "description": "分组区域横向坐标。"
+          },
+          "y": {
+            "type": "number",
+            "description": "分组区域纵向坐标。"
+          },
+          "w": {
+            "type": "number",
+            "description": "分组区域宽度。"
+          },
+          "h": {
+            "type": "number",
+            "description": "分组区域高度。"
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "分组颜色，允许 null 表示未设置。"
+          }
+        }
+      }
+    }
+  }
+}
